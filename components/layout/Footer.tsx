@@ -8,7 +8,11 @@ export function Footer() {
           <div>
             <div className="brand-lockup">
               <span aria-hidden="true" className="brand-lockup__mark">
-                W
+                <span className="brand-lockup__bar brand-lockup__bar--olive-sm" />
+                <span className="brand-lockup__bar brand-lockup__bar--olive" />
+                <span className="brand-lockup__bar brand-lockup__bar--brand" />
+                <span className="brand-lockup__bar brand-lockup__bar--brand-lg" />
+                <span className="brand-lockup__bar brand-lockup__bar--brand-slice" />
               </span>
               <span className="brand-lockup__text">
                 <strong>World Institute for Action Learning</strong>
