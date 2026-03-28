@@ -6,7 +6,7 @@
 - [Team Slack Channel](https://opportunity-hack.slack.com/app_redirect?channel=team-04-dev-crew)
 
 ## Team "Dev Crew"
-- Siya SIngh
+- Siya Singh
 - Misha Kumari
 - Abhinav Reja
 - Neha Valeti
