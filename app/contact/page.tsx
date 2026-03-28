@@ -1,44 +1,86 @@
 export default function ContactPage() {
   return (
     <>
-      <section className="page-header">
-        <div className="container">
-          <span className="eyebrow">Contact</span>
-          <h1 className="section-title">Reach WIAL through a simple, direct contact path.</h1>
-          <p className="section-copy">
-            The MVP requirement is intentionally light here: the public site can direct
-            visitors to the Executive Director’s email while the richer workflows are
-            still being built.
-          </p>
-        </div>
-      </section>
+      <section className="contact-page">
+        <div className="container contact-page__grid">
+          <section className="contact-form-card">
+            <div className="contact-form-card__intro">
+              <h1>CONTACT US!</h1>
+              <p>
+                We are here to help! Please reach out if you have any questions or
+                want more information on our company, services, or Action Learning.
+              </p>
+            </div>
 
-      <div className="page-divider" />
+            <form action="#" className="contact-form">
+              <div className="contact-form__field-group">
+                <label className="contact-form__label" htmlFor="first-name">
+                  Name <span>*</span>
+                </label>
+                <div className="contact-form__name-row">
+                  <div className="contact-form__field">
+                    <input id="first-name" type="text" />
+                    <small>First</small>
+                  </div>
+                  <div className="contact-form__field">
+                    <input id="last-name" type="text" />
+                    <small>Last</small>
+                  </div>
+                </div>
+              </div>
 
-      <section className="section">
-        <div className="container contact-grid">
-          <article className="contact-card">
-            <strong>Executive Director</strong>
-            <p>
-              Primary contact for general WIAL inquiries, chapter questions, and
-              certification-related direction during the MVP phase.
-            </p>
-            <p>
-              Email:{' '}
-              <a href="mailto:info@wial.org" style={{ color: 'var(--brand-dark)', fontWeight: 700 }}>
-                info@wial.org
-              </a>
-            </p>
-          </article>
+              <div className="contact-form__field-group">
+                <label className="contact-form__label" htmlFor="email">
+                  E-mail <span>*</span>
+                </label>
+                <input id="email" type="email" />
+              </div>
 
-          <article className="contact-card">
-            <strong>What belongs here right now</strong>
+              <div className="contact-form__field-group">
+                <label className="contact-form__label" htmlFor="country">
+                  Country <span>*</span>
+                </label>
+                <input id="country" type="text" />
+              </div>
+
+              <div className="contact-form__field-group">
+                <label className="contact-form__label" htmlFor="about">
+                  About <span>*</span>
+                </label>
+                <select defaultValue="" id="about">
+                  <option disabled value="">
+                    Choose
+                  </option>
+                  <option>Certification</option>
+                  <option>Find a Coach</option>
+                  <option>Programs</option>
+                  <option>Resources</option>
+                  <option>General Question</option>
+                </select>
+              </div>
+
+              <div className="contact-form__field-group">
+                <label className="contact-form__label" htmlFor="comment">
+                  Comment or Question <span>*</span>
+                </label>
+                <textarea id="comment" rows={8} />
+              </div>
+
+              <button className="contact-form__submit" type="submit">
+                Submit
+              </button>
+            </form>
+          </section>
+
+          <aside className="contact-sidebar-card">
+            <h2>Mailing Address:</h2>
+            <p>P.O. Box 7601 #83791 Washington, DC 20044</p>
+
+            <h2>International Email:</h2>
             <p>
-              A clear path to contact WIAL, lightweight public content, and no heavy
-              form workflow yet. This keeps the public site simple while still meeting
-              the MVP expectation from the spec.
+              <a href="mailto:info@wial.org">info@wial.org</a>
             </p>
-          </article>
+          </aside>
         </div>
       </section>
     </>

@@ -42,21 +42,21 @@ const events = [
     date: 'April 10, 2026',
     title: 'Leading Through Questioning',
     description: 'A short introduction to Action Learning and the WIAL method.',
-    image: '/homepage-assets/pic-3.png',
+    imageBase: '/homepage-assets/optimized/pic-3',
   },
   {
     type: 'TRAINING',
     date: 'May 5, 2026',
     title: 'CALC Certification Track',
     description: 'Structured training for prospective certified Action Learning coaches.',
-    image: '/homepage-assets/picture-1.png',
+    imageBase: '/homepage-assets/optimized/picture-1',
   },
   {
     type: 'GLOBAL',
     date: 'June 15, 2026',
     title: 'Global AI Forum 2026',
     description: 'Connect with the worldwide WIAL network through conferences and events.',
-    image: '/homepage-assets/pic-2.png',
+    imageBase: '/homepage-assets/optimized/pic-2',
   },
 ];
 
@@ -87,11 +87,17 @@ export default function HomePage() {
 
           <div className="home-hero__visual animate-rise animate-rise-delay-1">
             <div className="home-hero__image-wrap">
-              <img
-                alt="Professionals meeting in a bright modern office"
-                className="home-hero__image"
-                src="/homepage-assets/picture-1.png"
-              />
+              <picture>
+                <source srcSet="/homepage-assets/optimized/picture-1.avif" type="image/avif" />
+                <source srcSet="/homepage-assets/optimized/picture-1.webp" type="image/webp" />
+                <img
+                  alt="Professionals meeting in a bright modern office"
+                  className="home-hero__image"
+                  decoding="async"
+                  fetchPriority="high"
+                  src="/homepage-assets/optimized/picture-1.jpeg"
+                />
+              </picture>
             </div>
             <div className="home-hero__overlay">
               <div className="authority-bar">
@@ -152,11 +158,17 @@ export default function HomePage() {
       <section className="home-section">
         <div className="container home-advantage">
           <div className="home-advantage__image animate-rise">
-            <img
-              alt="Collaborative workshop with participants using sticky notes"
-              className="home-advantage__photo"
-              src="/homepage-assets/pic-2.png"
-            />
+            <picture>
+              <source srcSet="/homepage-assets/optimized/pic-2.avif" type="image/avif" />
+              <source srcSet="/homepage-assets/optimized/pic-2.webp" type="image/webp" />
+              <img
+                alt="Collaborative workshop with participants using sticky notes"
+                className="home-advantage__photo"
+                decoding="async"
+                loading="lazy"
+                src="/homepage-assets/optimized/pic-2.jpeg"
+              />
+            </picture>
           </div>
 
           <div className="home-advantage__copy animate-rise animate-rise-delay-1">
@@ -195,7 +207,16 @@ export default function HomePage() {
             {events.map((event) => (
               <article className="home-event-card" key={event.title}>
                 <div className="home-event-card__media">
-                  <img alt={event.title} src={event.image} />
+                  <picture>
+                    <source srcSet={`${event.imageBase}.avif`} type="image/avif" />
+                    <source srcSet={`${event.imageBase}.webp`} type="image/webp" />
+                    <img
+                      alt={event.title}
+                      decoding="async"
+                      loading="lazy"
+                      src={`${event.imageBase}.jpeg`}
+                    />
+                  </picture>
                   <span>{event.type}</span>
                 </div>
                 <div className="home-event-card__body">
