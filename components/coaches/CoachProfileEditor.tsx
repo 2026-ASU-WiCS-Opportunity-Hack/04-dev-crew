@@ -23,6 +23,9 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
     specializations: (coach.specializations ?? []).join(', '),
   });
 
+  const [photoPreview, setPhotoPreview] = useState<string | null>(coach.photo_url ?? null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -34,6 +37,29 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
     setForm((f) => ({ ...f, [key]: value }));
     setSaved(false);
     setSaveError(null);
+  }
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
+
+  async function handlePhotoUpload() {
+    if (!photoFile) return;
+    setUploadingPhoto(true);
+    const fd = new FormData();
+    fd.append('photo', photoFile);
+    const res = await fetch(`/api/coaches/${coach.id}/photo`, { method: 'POST', body: fd });
+    const json = await res.json();
+    if (json.ok) {
+      setPhotoPreview(json.data.photo_url);
+      setPhotoFile(null);
+    } else {
+      setSaveError('Photo upload failed: ' + json.error);
+    }
+    setUploadingPhoto(false);
   }
 
   async function handleEnhanceBio() {
@@ -123,6 +149,31 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
           {coach.certification_expiry ? `Expires: ${new Date(coach.certification_expiry).toLocaleDateString()}` : ''}
         </span>
       </div>
+
+      {/* Photo upload */}
+      <section>
+        <h3 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 700 }}>Profile Photo</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #0d5c63, #1a56db)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {photoPreview
+              ? <img src={photoPreview} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ color: '#fff', fontWeight: 700, fontSize: '1.4rem' }}>{coach.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}</span>
+            }
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <label style={{ display: 'inline-block', padding: '8px 16px', borderRadius: 8, border: '1.5px solid rgba(28,43,51,0.15)', background: 'var(--card)', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600 }}>
+              Choose Photo
+              <input type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
+            </label>
+            {photoFile && (
+              <button type="button" onClick={handlePhotoUpload} disabled={uploadingPhoto} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: uploadingPhoto ? '#94a3b8' : 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: '0.85rem', cursor: uploadingPhoto ? 'not-allowed' : 'pointer' }}>
+                {uploadingPhoto ? 'Uploading…' : 'Upload Photo'}
+              </button>
+            )}
+            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--muted)' }}>JPG, PNG or WebP. Max 5MB.</p>
+          </div>
+        </div>
+      </section>
 
       {/* Basic info */}
       <section>

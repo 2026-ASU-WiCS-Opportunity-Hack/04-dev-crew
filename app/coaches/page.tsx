@@ -9,7 +9,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const CERT_LEVELS: CertificationLevel[] = ['CALC', 'PALC', 'SALC', 'MALC'];
 
-type CoachWithChapter = CoachRecord & { similarity?: number; chapter_name?: string };
+type CoachWithChapter = CoachRecord & { similarity?: number; chapter_name?: string; chapter_id?: string };
 
 export default function CoachesPage() {
   const [allCoaches, setAllCoaches] = useState<CoachWithChapter[]>([]);
@@ -17,6 +17,7 @@ export default function CoachesPage() {
   const [searchResults, setSearchResults] = useState<CoachWithChapter[] | null>(null);
   const [certFilter, setCertFilter] = useState<CertificationLevel | ''>('');
   const [countryFilter, setCountryFilter] = useState('');
+  const [chapterFilter, setChapterFilter] = useState('');
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -37,15 +38,25 @@ export default function CoachesPage() {
   }, []);
 
   const countries = [...new Set(allCoaches.map((c) => c.location_country).filter((c): c is string => !!c))].sort();
+  const chapters = [...new Map(
+    allCoaches
+      .filter((c) => c.chapter_name)
+      .map((c) => [c.chapter_id, c.chapter_name])
+  ).entries()].sort((a, b) => (a[1] ?? '').localeCompare(b[1] ?? ''));
+
   const isSearchMode = searchResults !== null;
+  const hasFilters = !!(certFilter || countryFilter || chapterFilter);
 
   const displayed = isSearchMode
     ? searchResults
     : allCoaches.filter((c) => {
         if (certFilter && c.certification_level !== certFilter) return false;
         if (countryFilter && c.location_country !== countryFilter) return false;
+        if (chapterFilter && c.chapter_id !== chapterFilter) return false;
         return true;
       });
+
+  const selectStyle = { padding: '8px 14px', borderRadius: 8, border: '1.5px solid rgba(28,43,51,0.15)', background: 'var(--card)', fontSize: '0.85rem', cursor: 'pointer' };
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -77,16 +88,20 @@ export default function CoachesPage() {
         {/* Filters — only in browse mode */}
         {!isSearchMode && (
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
-            <select value={certFilter} onChange={(e) => setCertFilter(e.target.value as CertificationLevel | '')} style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid rgba(28,43,51,0.15)', background: 'var(--card)', fontSize: '0.85rem', cursor: 'pointer' }}>
+            <select value={certFilter} onChange={(e) => setCertFilter(e.target.value as CertificationLevel | '')} style={selectStyle}>
               <option value="">All Cert Levels</option>
               {CERT_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
             </select>
-            <select value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid rgba(28,43,51,0.15)', background: 'var(--card)', fontSize: '0.85rem', cursor: 'pointer' }}>
+            <select value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)} style={selectStyle}>
               <option value="">All Countries</option>
               {countries.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            {(certFilter || countryFilter) && (
-              <button onClick={() => { setCertFilter(''); setCountryFilter(''); }} style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid rgba(28,43,51,0.15)', background: 'transparent', fontSize: '0.85rem', cursor: 'pointer' }}>
+            <select value={chapterFilter} onChange={(e) => setChapterFilter(e.target.value)} style={selectStyle}>
+              <option value="">All Chapters</option>
+              {chapters.map(([id, name]) => <option key={id ?? ''} value={id ?? ''}>{name}</option>)}
+            </select>
+            {hasFilters && (
+              <button onClick={() => { setCertFilter(''); setCountryFilter(''); setChapterFilter(''); }} style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid rgba(28,43,51,0.15)', background: 'transparent', fontSize: '0.85rem', cursor: 'pointer' }}>
                 Clear filters
               </button>
             )}
