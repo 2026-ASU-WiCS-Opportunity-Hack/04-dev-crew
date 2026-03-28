@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import type { CoachRecord } from '@/lib/types';
 import CertBadge from './CertBadge';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface CoachProfileEditorProps {
   coach: CoachRecord;
@@ -78,10 +77,10 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
     setSaved(false);
     setSaveError(null);
 
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase
-      .from('coaches')
-      .update({
+    const res = await fetch(`/api/coaches/${coach.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         full_name: form.full_name,
         bio_raw: form.bio_raw,
         bio_enhanced: form.bio_enhanced,
@@ -93,11 +92,13 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
         website_url: form.website_url,
         highlight: form.highlight,
         specializations: form.specializations.split(',').map((t) => t.trim()).filter(Boolean),
-      })
-      .eq('id', coach.id);
+      }),
+    });
 
-    if (error) {
-      setSaveError('Save failed: ' + error.message);
+    const json = await res.json();
+
+    if (!json.ok) {
+      setSaveError('Save failed: ' + (json.error ?? 'unknown error'));
     } else {
       setSaved(true);
     }

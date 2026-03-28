@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface CeCredit {
   id: string;
@@ -24,17 +23,13 @@ export default function CeCreditsTracker({ coachId }: CeCreditsTrackerProps) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-    supabase
-      .from('ce_credits')
-      .select('*')
-      .eq('coach_id', coachId)
-      .order('completion_date', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) console.error(error);
-        setCredits(data ?? []);
+    fetch(`/api/credits?coach_id=${coachId}`)
+      .then((r) => r.json())
+      .then(({ data, ok }) => {
+        if (ok) setCredits(data ?? []);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, [coachId]);
 
   const total = credits.reduce((sum, c) => sum + c.credits_earned, 0);
@@ -49,25 +44,23 @@ export default function CeCreditsTracker({ coachId }: CeCreditsTrackerProps) {
     if (!form.activity_name || !form.credits_earned || !form.completion_date) return;
     setSaving(true);
 
-    const supabase = createSupabaseBrowserClient();
-    const newCredit = {
-      coach_id: coachId,
-      activity_name: form.activity_name,
-      credits_earned: parseFloat(form.credits_earned),
-      completion_date: form.completion_date,
-      documentation_url: form.documentation_url,
-    };
+    const res = await fetch('/api/credits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        coach_id: coachId,
+        activity_name: form.activity_name,
+        credits_earned: parseFloat(form.credits_earned),
+        completion_date: form.completion_date,
+        documentation_url: form.documentation_url,
+      }),
+    });
 
-    const { data, error } = await supabase
-      .from('ce_credits')
-      .insert(newCredit)
-      .select()
-      .single();
-
-    if (!error && data) {
-      setCredits((prev) => [data, ...prev]);
+    const json = await res.json();
+    if (json.ok) {
+      setCredits((prev) => [json.data, ...prev]);
     } else {
-      console.error(error);
+      console.error(json.error);
     }
 
     setForm({ activity_name: '', credits_earned: '', completion_date: '', documentation_url: '' });

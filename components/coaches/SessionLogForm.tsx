@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface SessionLog {
   id: string;
@@ -18,24 +17,20 @@ interface SessionLogFormProps {
   currentTotal: number;
 }
 
-export default function SessionLogForm({ coachId, currentTotal }: SessionLogFormProps) {
+export default function SessionLogForm({ coachId }: SessionLogFormProps) {
   const [logs, setLogs] = useState<SessionLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ session_date: '', duration_hours: '', client_description: '', notes: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-    supabase
-      .from('session_logs')
-      .select('*')
-      .eq('coach_id', coachId)
-      .order('session_date', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) console.error(error);
-        setLogs(data ?? []);
+    fetch(`/api/sessions?coach_id=${coachId}`)
+      .then((r) => r.json())
+      .then(({ data, ok }) => {
+        if (ok) setLogs(data ?? []);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, [coachId]);
 
   const displayTotal = logs.reduce((sum, l) => sum + l.duration_hours, 0);
@@ -50,25 +45,23 @@ export default function SessionLogForm({ coachId, currentTotal }: SessionLogForm
     if (!form.session_date || !form.duration_hours || !form.client_description) return;
     setSaving(true);
 
-    const supabase = createSupabaseBrowserClient();
-    const newLog = {
-      coach_id: coachId,
-      session_date: form.session_date,
-      duration_hours: parseFloat(form.duration_hours),
-      client_description: form.client_description,
-      notes: form.notes,
-    };
+    const res = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        coach_id: coachId,
+        session_date: form.session_date,
+        duration_hours: parseFloat(form.duration_hours),
+        client_description: form.client_description,
+        notes: form.notes,
+      }),
+    });
 
-    const { data, error } = await supabase
-      .from('session_logs')
-      .insert(newLog)
-      .select()
-      .single();
-
-    if (!error && data) {
-      setLogs((prev) => [data, ...prev]);
+    const json = await res.json();
+    if (json.ok) {
+      setLogs((prev) => [json.data, ...prev]);
     } else {
-      console.error(error);
+      console.error(json.error);
     }
 
     setForm({ session_date: '', duration_hours: '', client_description: '', notes: '' });
