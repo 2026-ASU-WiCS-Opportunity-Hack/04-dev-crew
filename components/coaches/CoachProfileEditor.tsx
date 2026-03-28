@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { CoachRecord } from '@/lib/types';
 import CertBadge from './CertBadge';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface CoachProfileEditorProps {
   coach: CoachRecord;
@@ -26,45 +27,82 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState<{ bio: string; tags: string[] } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<{ bio: string } | null>(null);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
 
   function update(key: keyof typeof form, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
     setSaved(false);
+    setSaveError(null);
   }
 
   async function handleEnhanceBio() {
     if (!form.bio_raw.trim()) return;
     setEnhancing(true);
     setAiSuggestion(null);
+    setEnhanceError(null);
 
-    // Simulate AI call — swap for real API when ready:
-    // const res = await fetch('/api/ai/enhance-bio', { method: 'POST', body: JSON.stringify({ fullName: form.full_name, certificationLevel: coach.certification_level, location: `${form.location_city}, ${form.location_country}`, rawBio: form.bio_raw }) });
-    // const json = await res.json();
+    const res = await fetch('/api/ai/enhance-bio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: form.full_name,
+        certificationLevel: coach.certification_level,
+        location: [form.location_city, form.location_country].filter(Boolean).join(', '),
+        specializations: form.specializations.split(',').map((t) => t.trim()).filter(Boolean),
+        rawBio: form.bio_raw,
+      }),
+    });
 
-    await new Promise((r) => setTimeout(r, 2000));
-    const mockEnhanced = `${form.full_name} is a ${coach.certification_level}-certified Action Learning coach based in ${form.location_city || 'their location'}. ${form.bio_raw.trim()} With a proven track record of facilitating transformative team problem-solving sessions, they bring structured methodology and deep empathy to every coaching engagement, helping leaders unlock collective intelligence and drive meaningful organizational change.`;
-    const mockTags = form.specializations
-      ? form.specializations.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean).slice(0, 5)
-      : ['action learning', 'leadership development', 'team coaching', 'organizational change', 'facilitation'];
+    const json = await res.json();
 
-    setAiSuggestion({ bio: mockEnhanced, tags: mockTags });
+    if (!json.ok) {
+      setEnhanceError(json.error ?? 'AI enhancement failed. Try again.');
+    } else {
+      setAiSuggestion({ bio: json.data.enhancedBio });
+    }
+
     setEnhancing(false);
   }
 
   function acceptAiSuggestion() {
     if (!aiSuggestion) return;
-    setForm((f) => ({ ...f, bio_enhanced: aiSuggestion.bio, specializations: aiSuggestion.tags.join(', ') }));
+    setForm((f) => ({ ...f, bio_enhanced: aiSuggestion.bio }));
     setAiSuggestion(null);
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    // Simulate save — swap for real Supabase upsert when backend ready
-    await new Promise((r) => setTimeout(r, 1000));
+    setSaved(false);
+    setSaveError(null);
+
+    const supabase = createSupabaseBrowserClient();
+    const { error } = await supabase
+      .from('coaches')
+      .update({
+        full_name: form.full_name,
+        bio_raw: form.bio_raw,
+        bio_enhanced: form.bio_enhanced,
+        location_city: form.location_city,
+        location_country: form.location_country,
+        contact_email: form.contact_email,
+        contact_phone: form.contact_phone,
+        linkedin_url: form.linkedin_url,
+        website_url: form.website_url,
+        highlight: form.highlight,
+        specializations: form.specializations.split(',').map((t) => t.trim()).filter(Boolean),
+      })
+      .eq('id', coach.id);
+
+    if (error) {
+      setSaveError('Save failed: ' + error.message);
+    } else {
+      setSaved(true);
+    }
+
     setSaving(false);
-    setSaved(true);
   }
 
   const inputStyle: React.CSSProperties = {
@@ -136,6 +174,9 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
           >
             {enhancing ? '✨ Enhancing…' : '✨ Enhance with AI'}
           </button>
+          {enhanceError && (
+            <p style={{ marginTop: 8, fontSize: '0.82rem', color: '#dc2626' }}>{enhanceError}</p>
+          )}
         </div>
 
         {/* AI suggestion */}
@@ -143,12 +184,6 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
           <div style={{ marginTop: 16, padding: 16, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10 }}>
             <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '0.85rem', color: '#15803d' }}>✨ AI-Generated Bio</p>
             <p style={{ margin: '0 0 12px', fontSize: '0.88rem', lineHeight: 1.65 }}>{aiSuggestion.bio}</p>
-            <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: '0.8rem', color: '#15803d' }}>Suggested tags:</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-              {aiSuggestion.tags.map((t) => (
-                <span key={t} style={{ padding: '2px 10px', borderRadius: 999, background: '#dcfce7', color: '#15803d', fontSize: '0.75rem', fontWeight: 500 }}>{t}</span>
-              ))}
-            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={acceptAiSuggestion} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#15803d', color: '#fff', fontWeight: 600, fontSize: '0.83rem', cursor: 'pointer' }}>
                 Accept
@@ -179,7 +214,7 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
         <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>These are used for semantic search matching.</p>
       </section>
 
-      {/* Self-advertising */}
+      {/* Public profile links */}
       <section>
         <h3 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 700 }}>Public Profile Links</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -218,6 +253,7 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
           {saving ? 'Saving…' : 'Save Profile'}
         </button>
         {saved && <span style={{ color: '#15803d', fontWeight: 600, fontSize: '0.88rem' }}>✓ Profile saved</span>}
+        {saveError && <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '0.88rem' }}>{saveError}</span>}
       </div>
     </form>
   );
