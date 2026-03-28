@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import type { CoachRecord } from '@/lib/types';
-import { mockSearch } from './mock-data';
 
 interface CoachSearchProps {
   onResults: (coaches: (CoachRecord & { similarity?: number })[]) => void;
@@ -22,17 +21,23 @@ export default function CoachSearch({ onResults, onReset }: CoachSearchProps) {
     setLoading(true);
     setParsedInfo(null);
 
-    // Simulate AI processing delay
-    await new Promise((r) => setTimeout(r, 1500));
+    const res = await fetch('/api/ai/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+    const json = await res.json();
 
-    // Use mock search — swap for real API call when backend is ready:
-    // const res = await fetch('/api/ai/search', { method: 'POST', body: JSON.stringify({ query }) });
-    // const json = await res.json();
-    // onResults(json.data.results);
-    const results = mockSearch(query);
+    if (!json.ok) {
+      setLoading(false);
+      return;
+    }
+
+    const results = json.data.results;
+    const parsed = json.data.parsed;
     setLastQuery(query);
     setParsedInfo(
-      `Detected language: ${/[àáãâéêíóôõúüç]/i.test(query) ? 'Portuguese' : 'English'} · Semantic query processed · ${results.length} match${results.length !== 1 ? 'es' : ''} found`
+      `Detected language: ${parsed.original_language ?? 'unknown'} · Semantic query: "${parsed.semantic_query}" · ${results.length} match${results.length !== 1 ? 'es' : ''} found`
     );
     onResults(results);
     setLoading(false);
