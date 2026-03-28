@@ -2,30 +2,19 @@ import Link from 'next/link';
 import { MobileNav } from '@/components/layout/MobileNav';
 
 const navItems = [
-  { href: '/', label: 'Home' },
-  { href: '/coaches', label: 'Coaches' },
-  { href: '/events', label: 'Events' },
-  { href: '/about', label: 'About' },
   { href: '/certification', label: 'Certification' },
-  { href: '/contact', label: 'Contact' },
+  { href: '/coaches', label: 'Find a Coach' },
+  { href: '/events', label: 'Programs' },
+  { href: '/resources', label: 'Resources' },
+  { href: '/about', label: 'About' },
 ];
 
 export function Header() {
   return (
     <header className="site-header">
       <div className="container site-header__inner">
-        <Link className="brand-lockup" href="/">
-          <span aria-hidden="true" className="brand-lockup__mark">
-            <span className="brand-lockup__bar brand-lockup__bar--olive-sm" />
-            <span className="brand-lockup__bar brand-lockup__bar--olive" />
-            <span className="brand-lockup__bar brand-lockup__bar--brand" />
-            <span className="brand-lockup__bar brand-lockup__bar--brand-lg" />
-            <span className="brand-lockup__bar brand-lockup__bar--brand-slice" />
-          </span>
-          <span className="brand-lockup__text">
-            <strong>World Institute for Action Learning</strong>
-            <span>Global Action Learning network</span>
-          </span>
+        <Link className="site-wordmark" href="/">
+          WIAL Global
         </Link>
 
         <nav aria-label="Primary" className="site-nav">
@@ -36,7 +25,30 @@ export function Header() {
           ))}
         </nav>
 
-        <MobileNav items={navItems} />
+        <div className="site-header__actions">
+          <button aria-label="Search" className="site-search" type="button">
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="18"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              width="18"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </button>
+
+          <Link className="site-header__cta" href="/certification">
+            Join WIAL
+          </Link>
+
+          <MobileNav items={navItems} />
+        </div>
       </div>
     </header>
   );

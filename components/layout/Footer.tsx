@@ -1,36 +1,101 @@
 import Link from 'next/link';
 
+const quickLinks = [
+  { href: '/certification', label: 'Certification' },
+  { href: '/coaches', label: 'Find a Coach' },
+  { href: '/resources', label: 'Resource Library' },
+  { href: '/about', label: 'About Us' },
+];
+
+const contactLinks = [
+  { href: '/events', label: 'Global Chapters' },
+  { href: '/contact', label: 'Partner Program' },
+  { href: '/resources', label: 'Press Kit' },
+  { href: '/contact', label: 'Help Center' },
+];
+
+const socialLinks = [
+  {
+    href: '#',
+    label: 'Website',
+    short: '◌',
+  },
+  {
+    href: '#',
+    label: 'Email',
+    short: '✉',
+  },
+  {
+    href: '#',
+    label: 'Share',
+    short: '↗',
+  },
+];
+
 export function Footer() {
   return (
     <footer className="site-footer">
-      <div className="container">
-        <div className="site-footer__inner">
-          <div>
-            <div className="brand-lockup">
-              <span aria-hidden="true" className="brand-lockup__mark">
-                <span className="brand-lockup__bar brand-lockup__bar--olive-sm" />
-                <span className="brand-lockup__bar brand-lockup__bar--olive" />
-                <span className="brand-lockup__bar brand-lockup__bar--brand" />
-                <span className="brand-lockup__bar brand-lockup__bar--brand-lg" />
-                <span className="brand-lockup__bar brand-lockup__bar--brand-slice" />
-              </span>
-              <span className="brand-lockup__text">
-                <strong>World Institute for Action Learning</strong>
-                <span>wial.org</span>
-              </span>
+      <div className="site-footer__panel">
+        <div className="container">
+          <div className="site-footer__grid">
+            <div className="site-footer__brand">
+              <Link className="site-wordmark site-wordmark--footer" href="/">
+                WIAL Global
+              </Link>
+              <p className="site-footer__summary">
+                The world&apos;s leading authority in Action Learning training and
+                certification.
+              </p>
+
+              <div className="site-footer__socials" aria-label="Social links">
+                {socialLinks.map((link) => (
+                  <a aria-label={link.label} href={link.href} key={link.label}>
+                    {link.short}
+                  </a>
+                ))}
+              </div>
             </div>
-            <p className="site-footer__meta">
-              Washington, DC
-              <br />
-              Advancing Action Learning through a global chapter network.
-            </p>
+
+            <div className="site-footer__column">
+              <h3>Quick Links</h3>
+              <div className="site-footer__list">
+                {quickLinks.map((link) => (
+                  <Link href={link.href} key={link.label}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="site-footer__column">
+              <h3>Contact Us</h3>
+              <div className="site-footer__list">
+                {contactLinks.map((link) => (
+                  <Link href={link.href} key={link.label}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="site-footer__column">
+              <h3>Stay Updated</h3>
+              <p className="site-footer__subscribe-copy">
+                Join our newsletter for latest AL research and updates.
+              </p>
+              <form action="#" className="site-footer__subscribe">
+                <input aria-label="Email address" placeholder="Email address" type="email" />
+                <button type="submit">Join</button>
+              </form>
+            </div>
           </div>
 
-          <div className="site-footer__links" aria-label="Footer">
-            <Link href="/about">About</Link>
-            <Link href="/certification">Certification</Link>
-            <Link href="/resources">Resources</Link>
-            <Link href="/contact">Contact</Link>
+          <div className="site-footer__meta">
+            <p>© 2024 WIAL Global. All rights reserved.</p>
+            <div>
+              <Link href="/contact">Privacy Policy</Link>
+              <Link href="/contact">Terms of Service</Link>
+            </div>
           </div>
         </div>
       </div>
