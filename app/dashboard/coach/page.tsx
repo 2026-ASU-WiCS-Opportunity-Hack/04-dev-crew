@@ -17,9 +17,7 @@ function NavLink({ href, label, active }: { href: string; label: string; active?
 function StatCard({ label, value, sub, href }: { label: string; value: string; sub?: string; href: string }) {
   return (
     <Link href={href} style={{ textDecoration: 'none' }}>
-      <div style={{ background: 'var(--card)', border: '1px solid rgba(28,43,51,0.08)', borderRadius: 14, padding: '20px 22px', transition: 'box-shadow 0.15s', cursor: 'pointer' }}
-        onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 20px rgba(13,92,99,0.1)')}
-        onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.boxShadow = 'none')}>
+      <div style={{ background: 'var(--card)', border: '1px solid rgba(28,43,51,0.08)', borderRadius: 14, padding: '20px 22px', cursor: 'pointer' }}>
         <p style={{ margin: '0 0 4px', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)' }}>{label}</p>
         <p style={{ margin: '0 0 4px', fontSize: '1.6rem', fontWeight: 800, color: 'var(--text)' }}>{value}</p>
         {sub && <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>{sub}</p>}
