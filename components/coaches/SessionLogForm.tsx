@@ -27,7 +27,6 @@ export default function SessionLogForm({ currentTotal }: SessionLogFormProps) {
   const [form, setForm] = useState({ session_date: '', duration_hours: '', client_description: '', notes: '' });
   const [saving, setSaving] = useState(false);
 
-  const totalHours = logs.reduce((sum, l) => sum + l.duration_hours, 0) + (currentTotal - MOCK_LOGS.reduce((s, l) => s + l.duration_hours, 0));
   const displayTotal = logs.reduce((sum, l) => sum + l.duration_hours, 0);
   const pct = Math.min(100, Math.round((displayTotal / PALC_REQUIREMENT) * 100));
 
@@ -61,18 +60,25 @@ export default function SessionLogForm({ currentTotal }: SessionLogFormProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       {/* Progress bar */}
       <div style={{ background: 'var(--card)', border: '1px solid rgba(28,43,51,0.08)', borderRadius: 14, padding: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>PALC Advancement Progress</span>
-          <span style={{ fontWeight: 800, fontSize: '1.1rem', color: pct >= 100 ? '#15803d' : 'var(--accent)' }}>
-            {displayTotal} / {PALC_REQUIREMENT} hrs
-          </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+          <div>
+            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>PALC Advancement Progress</span>
+            <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
+              {pct >= 100 ? '🎉 100-hour requirement met! You are eligible for PALC advancement.' : `${PALC_REQUIREMENT - displayTotal} more hours required for PALC advancement.`}
+            </p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontWeight: 800, fontSize: '2rem', lineHeight: 1, color: pct >= 100 ? '#15803d' : 'var(--accent)' }}>
+              {displayTotal}
+            </span>
+            <span style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--muted)' }}> / {PALC_REQUIREMENT} hrs</span>
+          </div>
         </div>
-        <div style={{ background: 'rgba(28,43,51,0.08)', borderRadius: 999, height: 12, overflow: 'hidden' }}>
-          <div style={{ width: `${pct}%`, height: '100%', background: pct >= 100 ? '#15803d' : 'var(--accent)', borderRadius: 999, transition: 'width 0.4s' }} />
+        <div style={{ background: 'rgba(28,43,51,0.08)', borderRadius: 999, height: 16, overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: pct >= 100 ? '#15803d' : 'var(--accent)', borderRadius: 999, transition: 'width 0.4s', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8 }}>
+            {pct > 10 && <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fff' }}>{pct}%</span>}
+          </div>
         </div>
-        <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
-          {pct >= 100 ? '🎉 100-hour requirement met! You are eligible for PALC advancement.' : `${PALC_REQUIREMENT - displayTotal} more hours required for PALC advancement.`}
-        </p>
       </div>
 
       {/* Log session form */}
