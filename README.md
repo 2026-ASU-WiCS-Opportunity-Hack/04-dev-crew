@@ -1,39 +1,130 @@
-# 2026_spring_wics_asu Hackathon Project
+# WIAL Platform — Dev Crew
 
 ## Quick Links
 - [Hackathon Details](https://www.ohack.dev/hack/2026_spring_wics_asu)
 - [DevPost Submission](https://wics-ohack-sp26-hackathon.devpost.com/)
 - [Team Slack Channel](https://opportunity-hack.slack.com/app_redirect?channel=team-04-dev-crew)
 
-## Team "Dev Crew"
-- Siya Singh
-- Misha Kumari
-- Abhinav Reja
-- Neha Valeti
+---
 
-## Project Overview
-Brief description of your project and its goals.
+## Team "Dev Crew"
+| Name | Role |
+|---|---|
+| Siya Singh | Team Member |
+| Misha Kumari | Team Member |
+| Abhinav Reja | Team Member |
+| Neha Valeti | Team Member |
+
+---
+
+## Problem Statement
+
+WIAL (World Institute for Action Learning) is a global nonprofit that certifies Action Learning coaches worldwide through 20+ country-level chapters. Every chapter currently runs its own independent WordPress site with inconsistent branding, no centralized coach directory, no payment system, and no way for WIAL Global to push updates.
+
+Coaches in developing countries are effectively invisible — their chapter sites look unprofessional, load slowly on low-bandwidth connections, and cannot be found across language barriers.
+
+---
+
+## What We Built
+
+A unified AI-native web platform where:
+- **WIAL Global** manages all chapters from one dashboard
+- **Chapter leads** create professional branded websites in 60 seconds using AI
+- **Coaches** are discoverable worldwide through cross-lingual AI semantic search
+- **Dues** are collected via Stripe
+- **Pages load in under 4 seconds** on slow 3G — pre-built as static HTML
+
+### Key AI Features
+- **AI-1: Cross-Lingual Semantic Search** — Search for coaches in any language and find matches across all languages using OpenAI embeddings + Supabase pgvector
+- **AI-2: Chapter-in-a-Box** — AI generates a full culturally-adapted chapter website in 60 seconds from a short form
+
+---
 
 ## Tech Stack
-- Frontend:
-- Backend:
-- Database:
-- APIs:
-<!-- Add/modify as needed -->
 
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 (App Router, SSG) |
+| Language | TypeScript |
+| UI Components | shadcn/ui + Tailwind CSS |
+| Database | Supabase (PostgreSQL + pgvector) |
+| Auth | Supabase Auth (Google SSO + email/password) |
+| File Storage | Supabase Storage |
+| Payments | Stripe Checkout + Webhooks |
+| AI Embeddings | OpenAI text-embedding-3-small |
+| AI Content | OpenAI GPT-4o-mini |
+| Vector Search | Supabase pgvector (cosine similarity) |
+| Hosting | Vercel |
+| Email | Resend |
+
+---
+
+## Live Demo
+
+- **Deployed App:** _Coming soon_
+- **Demo Video:** _Coming soon_
+- **DevPost Project:** _Coming soon_
+
+---
 
 ## Getting Started
-Instructions on how to set up and run your project locally.
+
+### Prerequisites
+- Node.js 18+
+- A Supabase project with pgvector enabled
+- OpenAI API key
+- Stripe account
+
+### Setup
 
 ```bash
-# Example commands
+# 1. Clone the repo
 git clone https://github.com/2026-ASU-WiCS-Opportunity-Hack/04-dev-crew.git
 cd 04-dev-crew
-# Add your setup commands here
+
+# 2. Install dependencies
+npm install
+
+# 3. Set up environment variables
+cp .env.example .env.local
+# Fill in your keys in .env.local
+
+# 4. Run the development server
+npm run dev
 ```
 
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Checklist for the final submission
+### Seed the Database
+
+```bash
+npm run seed
+```
+
+This inserts 4 chapters, 15 coaches with embeddings, 6 events, payments, testimonials, and clients.
+
+---
+
+## Git Workflow
+
+```
+main    ← always deployable, source of truth
+  └── dev     ← integration branch, everyone merges here first
+        ├── person1/backend
+        ├── person2/frontend-shell
+        ├── person3/chapters
+        └── person4/coaches
+```
+
+- Branch off `dev` for your work
+- PR into `dev` when your feature works
+- `dev` → `main` once stable and tested
+- **Never commit `.env.local`** — share credentials via DM
+
+---
+
+## Checklist for Final Submission
+
 ### 0/Judging Criteria
 - [ ] Review the [judging criteria](https://www.ohack.dev/about/judges#judging-criteria) to understand how your project will be evaluated
 
@@ -48,36 +139,3 @@ cd 04-dev-crew
 - [ ] Make sure your repo is public
 - [ ] Make sure your repo has a MIT License
 - [ ] Make sure your repo has a detailed README.md (see below for details)
-
-
-# What should your final README look like?
-Your readme should be a one-stop-shop for the judges to understand your project. It should include:
-- Team name
-- Team members
-- Slack channel
-- Problem statement
-- Tech stack
-- Link to your working project on the web so judges can try it out
-- Link to your DevPost project
-- Link to your final demo video
-- Instructions on how to run your project
-- Any other relevant links (e.g. Figma, GitHub repos for any open source libraries you used, etc.)
-
-
-You'll use this repo as your resume in the future, so make it shine! 🌟
-
-# Examples
-Examples of stellar readmes:
-- ✨ [2019 Team 3](https://github.com/2019-Arizona-Opportunity-Hack/Team-3)
-- ✨ [2019 Team 6](https://github.com/2019-Arizona-Opportunity-Hack/Team-6)
-- ✨ [2020 Team 2](https://github.com/2020-opportunity-hack/Team-02)
-- ✨ [2020 Team 4](https://github.com/2020-opportunity-hack/Team-04)
-- ✨ [2020 Team 8](https://github.com/2020-opportunity-hack/Team-08)
-- ✨ [2020 Team 12](https://github.com/2020-opportunity-hack/Team-12)
-
-Examples of winning DevPost submissions:
-- [1st place 2024](https://devpost.com/software/nature-s-edge-wildlife-and-reptile-rescue)
-- [2nd place 2024](https://devpost.com/software/team13-kidcoda-steam)
-- [1st place 2023](https://devpost.com/software/preservation-partners-search-engine)
-- [1st place 2019](https://devpost.com/software/zuri-s-dashboard)
-- [1st place 2018](https://devpost.com/software/matthews-crossing-data-manager-oj4ica)
