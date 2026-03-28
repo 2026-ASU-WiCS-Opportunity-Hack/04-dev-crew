@@ -567,14 +567,22 @@ img {
 .home-dual-cta__card--light {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.97)),
-    url('/homepage-assets/pic-2.png') center/cover no-repeat;
+    image-set(
+      url('/homepage-assets/optimized/pic-2.avif') type('image/avif'),
+      url('/homepage-assets/optimized/pic-2.webp') type('image/webp'),
+      url('/homepage-assets/optimized/pic-2.jpeg') type('image/jpeg')
+    ) center/cover no-repeat;
 }
 
 .home-dual-cta__card--bold {
   color: #fff;
   background:
     linear-gradient(180deg, rgba(174, 0, 53, 0.82), rgba(154, 0, 47, 0.82)),
-    url('/homepage-assets/picture-1.png') center/cover no-repeat;
+    image-set(
+      url('/homepage-assets/optimized/picture-1.avif') type('image/avif'),
+      url('/homepage-assets/optimized/picture-1.webp') type('image/webp'),
+      url('/homepage-assets/optimized/picture-1.jpeg') type('image/jpeg')
+    ) center/cover no-repeat;
 }
 
 .home-dual-cta__ghost {
