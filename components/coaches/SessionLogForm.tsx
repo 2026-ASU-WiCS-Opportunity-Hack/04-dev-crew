@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface SessionLog {
   id: string;
@@ -10,22 +11,32 @@ interface SessionLog {
   notes: string;
 }
 
-const MOCK_LOGS: SessionLog[] = [
-  { id: 's1', session_date: '2026-03-10', duration_hours: 2.5, client_description: 'Banking sector leadership team', notes: 'Strong group dynamics, good progress on problem framing.' },
-  { id: 's2', session_date: '2026-03-05', duration_hours: 3, client_description: 'Government agency HR team', notes: 'Focused on cross-departmental collaboration.' },
-  { id: 's3', session_date: '2026-02-28', duration_hours: 2, client_description: 'NGO executive team', notes: 'Helped team reframe strategic challenge.' },
-];
-
 const PALC_REQUIREMENT = 100;
 
 interface SessionLogFormProps {
+  coachId: string;
   currentTotal: number;
 }
 
-export default function SessionLogForm({ currentTotal }: SessionLogFormProps) {
-  const [logs, setLogs] = useState<SessionLog[]>(MOCK_LOGS);
+export default function SessionLogForm({ coachId, currentTotal }: SessionLogFormProps) {
+  const [logs, setLogs] = useState<SessionLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ session_date: '', duration_hours: '', client_description: '', notes: '' });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    supabase
+      .from('session_logs')
+      .select('*')
+      .eq('coach_id', coachId)
+      .order('session_date', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) console.error(error);
+        setLogs(data ?? []);
+        setLoading(false);
+      });
+  }, [coachId]);
 
   const displayTotal = logs.reduce((sum, l) => sum + l.duration_hours, 0);
   const pct = Math.min(100, Math.round((displayTotal / PALC_REQUIREMENT) * 100));
@@ -38,17 +49,28 @@ export default function SessionLogForm({ currentTotal }: SessionLogFormProps) {
     e.preventDefault();
     if (!form.session_date || !form.duration_hours || !form.client_description) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setLogs((prev) => [
-      {
-        id: Date.now().toString(),
-        session_date: form.session_date,
-        duration_hours: parseFloat(form.duration_hours),
-        client_description: form.client_description,
-        notes: form.notes,
-      },
-      ...prev,
-    ]);
+
+    const supabase = createSupabaseBrowserClient();
+    const newLog = {
+      coach_id: coachId,
+      session_date: form.session_date,
+      duration_hours: parseFloat(form.duration_hours),
+      client_description: form.client_description,
+      notes: form.notes,
+    };
+
+    const { data, error } = await supabase
+      .from('session_logs')
+      .insert(newLog)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setLogs((prev) => [data, ...prev]);
+    } else {
+      console.error(error);
+    }
+
     setForm({ session_date: '', duration_hours: '', client_description: '', notes: '' });
     setSaving(false);
   }
@@ -112,27 +134,33 @@ export default function SessionLogForm({ currentTotal }: SessionLogFormProps) {
         <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(28,43,51,0.08)' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Session History</h3>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg)' }}>
-                {['Date', 'Hours', 'Client', 'Notes'].map((h) => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id} style={{ borderTop: '1px solid rgba(28,43,51,0.06)' }}>
-                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>{new Date(log.session_date).toLocaleDateString()}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 700 }}>{log.duration_hours}h</td>
-                  <td style={{ padding: '12px 16px' }}>{log.client_description}</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--muted)' }}>{log.notes || '—'}</td>
+        {loading ? (
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.88rem' }}>Loading sessions…</div>
+        ) : logs.length === 0 ? (
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.88rem' }}>No sessions logged yet. Add your first session above.</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg)' }}>
+                  {['Date', 'Hours', 'Client', 'Notes'].map((h) => (
+                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id} style={{ borderTop: '1px solid rgba(28,43,51,0.06)' }}>
+                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>{new Date(log.session_date).toLocaleDateString()}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{log.duration_hours}h</td>
+                    <td style={{ padding: '12px 16px' }}>{log.client_description}</td>
+                    <td style={{ padding: '12px 16px', color: 'var(--muted)' }}>{log.notes || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

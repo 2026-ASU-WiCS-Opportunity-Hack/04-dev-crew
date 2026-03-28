@@ -1,17 +1,33 @@
 import Link from 'next/link';
-import { MOCK_COACHES } from '@/components/coaches/mock-data';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import CoachProfileEditor from '@/components/coaches/CoachProfileEditor';
+import type { CoachRecord } from '@/lib/types';
 
-const ME = MOCK_COACHES.find((c) => c.id === '1')!;
+const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
 
-export default function CoachProfilePage() {
+export default async function CoachProfilePage() {
+  const supabase = createSupabaseServerClient();
+  const { data: me } = await supabase
+    .from('coaches')
+    .select('*')
+    .eq('id', CRAIG_UUID)
+    .single<CoachRecord>();
+
+  if (!me) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <p style={{ color: 'var(--muted)' }}>Coach profile not found.</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <nav style={{ padding: '0 32px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--card)', borderBottom: '1px solid rgba(28,43,51,0.08)', position: 'sticky', top: 0, zIndex: 50 }}>
         <Link href="/" style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--accent)', textDecoration: 'none' }}>WIAL</Link>
         <div style={{ display: 'flex', gap: 20, fontSize: '0.88rem' }}>
           <Link href="/dashboard/coach" style={{ textDecoration: 'none', color: 'var(--muted)' }}>← Dashboard</Link>
-          <Link href={`/coaches/${ME.id}`} style={{ textDecoration: 'none', color: 'var(--accent)', fontWeight: 600 }}>View Public Profile</Link>
+          <Link href={`/coaches/${me.id}`} style={{ textDecoration: 'none', color: 'var(--accent)', fontWeight: 600 }}>View Public Profile</Link>
         </div>
       </nav>
 
@@ -25,7 +41,7 @@ export default function CoachProfilePage() {
         </div>
 
         <div style={{ background: 'var(--card)', border: '1px solid rgba(28,43,51,0.08)', borderRadius: 16, padding: 28 }}>
-          <CoachProfileEditor coach={ME} />
+          <CoachProfileEditor coach={me} />
         </div>
       </main>
     </div>

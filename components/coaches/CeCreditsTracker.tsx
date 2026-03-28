@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface CeCredit {
   id: string;
@@ -10,18 +11,31 @@ interface CeCredit {
   documentation_url: string;
 }
 
-const MOCK_CREDITS: CeCredit[] = [
-  { id: 'c1', activity_name: 'WIAL Global Conference 2025', credits_earned: 8, completion_date: '2025-06-20', documentation_url: '' },
-  { id: 'c2', activity_name: 'Advanced Action Learning Facilitation Webinar', credits_earned: 3, completion_date: '2025-09-14', documentation_url: 'https://lms.wial.org/cert/c2' },
-  { id: 'c3', activity_name: 'Cross-Cultural Coaching Module', credits_earned: 5, completion_date: '2025-11-05', documentation_url: '' },
-];
-
 const RECERT_REQUIREMENT = 30;
 
-export default function CeCreditsTracker() {
-  const [credits, setCredits] = useState<CeCredit[]>(MOCK_CREDITS);
+interface CeCreditsTrackerProps {
+  coachId: string;
+}
+
+export default function CeCreditsTracker({ coachId }: CeCreditsTrackerProps) {
+  const [credits, setCredits] = useState<CeCredit[]>([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ activity_name: '', credits_earned: '', completion_date: '', documentation_url: '' });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    supabase
+      .from('ce_credits')
+      .select('*')
+      .eq('coach_id', coachId)
+      .order('completion_date', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) console.error(error);
+        setCredits(data ?? []);
+        setLoading(false);
+      });
+  }, [coachId]);
 
   const total = credits.reduce((sum, c) => sum + c.credits_earned, 0);
   const pct = Math.min(100, Math.round((total / RECERT_REQUIREMENT) * 100));
@@ -34,11 +48,28 @@ export default function CeCreditsTracker() {
     e.preventDefault();
     if (!form.activity_name || !form.credits_earned || !form.completion_date) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setCredits((prev) => [
-      { id: Date.now().toString(), activity_name: form.activity_name, credits_earned: parseFloat(form.credits_earned), completion_date: form.completion_date, documentation_url: form.documentation_url },
-      ...prev,
-    ]);
+
+    const supabase = createSupabaseBrowserClient();
+    const newCredit = {
+      coach_id: coachId,
+      activity_name: form.activity_name,
+      credits_earned: parseFloat(form.credits_earned),
+      completion_date: form.completion_date,
+      documentation_url: form.documentation_url,
+    };
+
+    const { data, error } = await supabase
+      .from('ce_credits')
+      .insert(newCredit)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setCredits((prev) => [data, ...prev]);
+    } else {
+      console.error(error);
+    }
+
     setForm({ activity_name: '', credits_earned: '', completion_date: '', documentation_url: '' });
     setSaving(false);
   }
@@ -100,31 +131,37 @@ export default function CeCreditsTracker() {
         <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(28,43,51,0.08)' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Credit History</h3>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg)' }}>
-                {['Activity', 'Credits', 'Date', 'Proof'].map((h) => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {credits.map((c) => (
-                <tr key={c.id} style={{ borderTop: '1px solid rgba(28,43,51,0.06)' }}>
-                  <td style={{ padding: '12px 16px' }}>{c.activity_name}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 700 }}>{c.credits_earned}</td>
-                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>{new Date(c.completion_date).toLocaleDateString()}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    {c.documentation_url
-                      ? <a href={c.documentation_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontSize: '0.8rem' }}>View →</a>
-                      : <span style={{ color: 'var(--muted)' }}>—</span>}
-                  </td>
+        {loading ? (
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.88rem' }}>Loading credits…</div>
+        ) : credits.length === 0 ? (
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.88rem' }}>No CE credits logged yet. Add your first activity above.</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg)' }}>
+                  {['Activity', 'Credits', 'Date', 'Proof'].map((h) => (
+                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {credits.map((c) => (
+                  <tr key={c.id} style={{ borderTop: '1px solid rgba(28,43,51,0.06)' }}>
+                    <td style={{ padding: '12px 16px' }}>{c.activity_name}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{c.credits_earned}</td>
+                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>{new Date(c.completion_date).toLocaleDateString()}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {c.documentation_url
+                        ? <a href={c.documentation_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontSize: '0.8rem' }}>View →</a>
+                        : <span style={{ color: 'var(--muted)' }}>—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,10 +1,18 @@
 import Link from 'next/link';
-import { MOCK_COACHES } from '@/components/coaches/mock-data';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import SessionLogForm from '@/components/coaches/SessionLogForm';
+import type { CoachRecord } from '@/lib/types';
 
-const ME = MOCK_COACHES.find((c) => c.id === '1')!;
+const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
 
-export default function CoachSessionsPage() {
+export default async function CoachSessionsPage() {
+  const supabase = createSupabaseServerClient();
+  const { data: me } = await supabase
+    .from('coaches')
+    .select('id, full_name, total_session_hours')
+    .eq('id', CRAIG_UUID)
+    .single<Pick<CoachRecord, 'id' | 'full_name' | 'total_session_hours'>>();
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <nav style={{ padding: '0 32px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--card)', borderBottom: '1px solid rgba(28,43,51,0.08)', position: 'sticky', top: 0, zIndex: 50 }}>
@@ -23,7 +31,7 @@ export default function CoachSessionsPage() {
           </p>
         </div>
 
-        <SessionLogForm currentTotal={ME.total_session_hours ?? 0} />
+        <SessionLogForm coachId={CRAIG_UUID} currentTotal={me?.total_session_hours ?? 0} />
       </main>
     </div>
   );

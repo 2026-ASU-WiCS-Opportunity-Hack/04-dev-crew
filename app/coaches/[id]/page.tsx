@@ -1,19 +1,25 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { MOCK_COACHES } from '@/components/coaches/mock-data';
 import CoachProfile from '@/components/coaches/CoachProfile';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 
 interface Props {
   params: { id: string };
 }
 
-export function generateStaticParams() {
-  return MOCK_COACHES.map((c) => ({ id: c.id }));
-}
+export default async function CoachProfilePage({ params }: Props) {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('coaches')
+    .select('*, chapters(name, slug)')
+    .eq('id', params.id)
+    .single();
 
-export default function CoachProfilePage({ params }: Props) {
-  const coach = MOCK_COACHES.find((c) => c.id === params.id);
-  if (!coach) notFound();
+  if (error || !data) notFound();
+
+  const coach = { ...data, chapter_name: (data as any).chapters?.name ?? null };
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>

@@ -1,13 +1,10 @@
 import Link from 'next/link';
-import { MOCK_COACHES } from '@/components/coaches/mock-data';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import CertBadge from '@/components/coaches/CertBadge';
+import type { CoachRecord } from '@/lib/types';
 
-// Mock: logged-in coach is Craig Senecal (id=1)
-const ME = MOCK_COACHES.find((c) => c.id === '1')!;
-const SESSION_HOURS = 55;
-const CE_CREDITS = 16;
-const PALC_REQUIRED = 100;
-const CE_REQUIRED = 30;
+// Demo: Craig Senecal is the logged-in coach
+const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
 
 function NavLink({ href, label, active }: { href: string; label: string; active?: boolean }) {
   return (
@@ -31,13 +28,33 @@ function StatCard({ label, value, sub, href }: { label: string; value: string; s
   );
 }
 
-export default function CoachDashboardPage() {
-  const expiryDate = ME.certification_expiry
-    ? new Date(ME.certification_expiry).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+export default async function CoachDashboardPage() {
+  const supabase = createSupabaseServerClient();
+  const { data: me } = await supabase
+    .from('coaches')
+    .select('*')
+    .eq('id', CRAIG_UUID)
+    .single<CoachRecord>();
+
+  if (!me) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <p style={{ color: 'var(--muted)' }}>Coach profile not found.</p>
+      </div>
+    );
+  }
+
+  const PALC_REQUIRED = 100;
+  const CE_REQUIRED = 30;
+  const sessionHours = me.total_session_hours ?? 0;
+  const ceCredits = me.total_ce_credits ?? 0;
+
+  const expiryDate = me.certification_expiry
+    ? new Date(me.certification_expiry).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : 'N/A';
 
-  const daysUntilExpiry = ME.certification_expiry
-    ? Math.ceil((new Date(ME.certification_expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  const daysUntilExpiry = me.certification_expiry
+    ? Math.ceil((new Date(me.certification_expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 90;
@@ -57,19 +74,19 @@ export default function CoachDashboardPage() {
         {/* Sidebar */}
         <aside style={{ width: 220, background: 'var(--card)', borderRight: '1px solid rgba(28,43,51,0.08)', padding: '24px 12px', flexShrink: 0 }}>
           <div style={{ padding: '0 10px 20px', borderBottom: '1px solid rgba(28,43,51,0.08)', marginBottom: 12 }}>
-            <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '0.9rem' }}>{ME.full_name}</p>
-            <CertBadge level={ME.certification_level} />
+            <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '0.9rem' }}>{me.full_name}</p>
+            <CertBadge level={me.certification_level} />
           </div>
           <NavLink href="/dashboard/coach" label="📊 Overview" active />
           <NavLink href="/dashboard/coach/profile" label="✏️ Edit Profile" />
           <NavLink href="/dashboard/coach/sessions" label="⏱ Session Logs" />
           <NavLink href="/dashboard/coach/credits" label="🎓 CE Credits" />
-          <NavLink href={`/coaches/${ME.id}`} label="👁 Public Profile" />
+          <NavLink href={`/coaches/${me.id}`} label="👁 Public Profile" />
         </aside>
 
         {/* Main */}
         <main style={{ flex: 1, padding: '32px 36px', maxWidth: 900 }}>
-          <h1 style={{ margin: '0 0 6px', fontSize: '1.6rem', fontWeight: 800 }}>Welcome back, {ME.full_name.split(' ')[0]} 👋</h1>
+          <h1 style={{ margin: '0 0 6px', fontSize: '1.6rem', fontWeight: 800 }}>Welcome back, {me.full_name.split(' ')[0]} 👋</h1>
           <p style={{ margin: '0 0 28px', color: 'var(--muted)', fontSize: '0.9rem' }}>Here's your coaching activity at a glance.</p>
 
           {/* Expiry alert */}
@@ -81,10 +98,10 @@ export default function CoachDashboardPage() {
 
           {/* Stats grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
-            <StatCard label="Certification" value={ME.certification_level} sub={`Expires ${expiryDate}`} href="/dashboard/coach/profile" />
-            <StatCard label="Session Hours" value={`${SESSION_HOURS}h`} sub={`${PALC_REQUIRED - SESSION_HOURS}h to PALC`} href="/dashboard/coach/sessions" />
-            <StatCard label="CE Credits" value={`${CE_CREDITS}`} sub={`${CE_REQUIRED - CE_CREDITS} more for recert`} href="/dashboard/coach/credits" />
-            <StatCard label="Specializations" value={`${(ME.specializations ?? []).length}`} sub="tags on your profile" href="/dashboard/coach/profile" />
+            <StatCard label="Certification" value={me.certification_level} sub={`Expires ${expiryDate}`} href="/dashboard/coach/profile" />
+            <StatCard label="Session Hours" value={`${sessionHours}h`} sub={`${PALC_REQUIRED - sessionHours}h to PALC`} href="/dashboard/coach/sessions" />
+            <StatCard label="CE Credits" value={`${ceCredits}`} sub={`${CE_REQUIRED - ceCredits} more for recert`} href="/dashboard/coach/credits" />
+            <StatCard label="Specializations" value={`${(me.specializations ?? []).length}`} sub="tags on your profile" href="/dashboard/coach/profile" />
           </div>
 
           {/* Profile preview */}
@@ -93,9 +110,9 @@ export default function CoachDashboardPage() {
               <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Your Profile</h2>
               <Link href="/dashboard/coach/profile" style={{ fontSize: '0.85rem', color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Edit →</Link>
             </div>
-            <p style={{ margin: '0 0 12px', fontSize: '0.88rem', lineHeight: 1.65, color: 'var(--muted)' }}>{ME.bio_enhanced?.slice(0, 200)}…</p>
+            <p style={{ margin: '0 0 12px', fontSize: '0.88rem', lineHeight: 1.65, color: 'var(--muted)' }}>{(me.bio_enhanced ?? me.bio_raw ?? '').slice(0, 200)}…</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {(ME.specializations ?? []).slice(0, 5).map((tag) => (
+              {(me.specializations ?? []).slice(0, 5).map((tag) => (
                 <span key={tag} style={{ padding: '2px 10px', borderRadius: 999, background: 'rgba(13,92,99,0.08)', color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 500 }}>{tag}</span>
               ))}
             </div>

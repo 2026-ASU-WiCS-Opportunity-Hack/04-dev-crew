@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import CeCreditsTracker from '@/components/coaches/CeCreditsTracker';
 
+const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
+
 export default function CoachCreditsPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -20,7 +22,7 @@ export default function CoachCreditsPage() {
           </p>
         </div>
 
-        <CeCreditsTracker />
+        <CeCreditsTracker coachId={CRAIG_UUID} />
       </main>
     </div>
   );
