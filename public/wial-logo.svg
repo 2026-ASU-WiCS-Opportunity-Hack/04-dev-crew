@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">WIAL Platform Logo</title>
+  <desc id="desc">A rounded square blue to teal gradient mark with the letter W.</desc>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a56db" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="140" height="140" rx="42" fill="url(#g)" />
+  <path
+    d="M38 48h16l11 41 15-41h13l15 41 11-41h16l-20 64h-14L86 71 71 112H57L38 48z"
+    fill="#ffffff"
+  />
+</svg>
