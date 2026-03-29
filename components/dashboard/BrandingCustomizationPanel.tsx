@@ -11,7 +11,7 @@ const DEFAULT_BRANDING: GlobalBrandingSettings = {
   template_id: "minimalist",
   logo_url: null,
   site_name: "WIAL Global",
-  header_cta_label: "Contact WIAL",
+  header_cta_label: "Login",
   primary_nav_json: [
     { href: "/certification", label: "Certification" },
     { href: "/coaches", label: "Find a Coach" },

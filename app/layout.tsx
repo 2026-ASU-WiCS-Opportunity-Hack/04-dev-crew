@@ -4,6 +4,7 @@ import { getGlobalBrandingSettings } from '@/lib/branding';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import { AccessibilityWidget } from '@/components/layout/AccessibilityWidget';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -21,6 +22,10 @@ type RootLayoutProps = {
 
 export default async function RootLayout({ children }: RootLayoutProps) {
   const branding = await getGlobalBrandingSettings();
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
     <html lang="en">
@@ -40,7 +45,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       >
         <div className="site-shell">
           <Header
-            headerCtaLabel={branding.header_cta_label}
+            isAuthenticated={Boolean(user)}
             logoUrl={branding.logo_url}
             navItems={branding.primary_nav_json}
             siteName={branding.site_name}

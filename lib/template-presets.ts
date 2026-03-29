@@ -29,7 +29,7 @@ export const TEMPLATE_PRESETS: TemplatePreset[] = [
       brand_dark_color: "#1f2937",
       accent_color: "#e5e7eb",
       footer_background: "#f8f9fb",
-      header_cta_label: "Contact WIAL",
+      header_cta_label: "Login",
       footer_summary:
         "A quiet, focused WIAL experience built for readability and trust.",
     },
@@ -41,11 +41,11 @@ export const TEMPLATE_PRESETS: TemplatePreset[] = [
     thumbnailLabel: "Vibrant",
     defaults: {
       template_id: "vibrant",
-      brand_color: "#ec4899",
-      brand_dark_color: "#7c3aed",
-      accent_color: "#facc15",
-      footer_background: "#140f2a",
-      header_cta_label: "Join WIAL",
+      brand_color: "#D10044",
+      brand_dark_color: "#A0003A",
+      accent_color: "#F23B7A",
+      footer_background: "#2B0616",
+      header_cta_label: "Login",
       footer_summary:
         "A bright, energetic WIAL shell designed to spotlight programs and calls to action.",
     },
@@ -61,7 +61,7 @@ export const TEMPLATE_PRESETS: TemplatePreset[] = [
       brand_dark_color: "#111827",
       accent_color: "#38bdf8",
       footer_background: "#0f172a",
-      header_cta_label: "Enter WIAL",
+      header_cta_label: "Login",
       footer_summary:
         "A darker premium shell for chapters that want more contrast and structure.",
     },

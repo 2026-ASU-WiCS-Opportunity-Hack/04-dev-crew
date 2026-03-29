@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { CoachRecord } from '@/lib/types';
-import { LogoutButton } from '@/components/auth/LogoutButton';
 import CertBadge from './CertBadge';
 
 const navItems = [
@@ -48,8 +47,6 @@ export default function DashboardSidebar({ coach }: DashboardSidebarProps) {
           👁 Public Profile
         </Link>
       )}
-
-      <LogoutButton className="button-secondary" label="Log Out" />
     </aside>
   );
 }
