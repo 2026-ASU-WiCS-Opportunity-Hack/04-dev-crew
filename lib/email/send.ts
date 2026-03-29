@@ -125,6 +125,99 @@ export async function sendPaymentConfirmationEmail({
   });
 }
 
+export async function sendChapterPaymentReceiptEmail({
+  to,
+  name,
+  chapterName,
+  amountCents,
+  siteUrl,
+}: {
+  to: string;
+  name: string;
+  chapterName: string;
+  amountCents: number;
+  siteUrl: string;
+}) {
+  const resend = getResend();
+  if (!resend) return;
+
+  const amount = (amountCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+  const body = `
+    <p style="color:#374151;line-height:1.6;">Hi ${name},</p>
+    <p style="color:#374151;line-height:1.6;">
+      Your chapter dues payment of <strong>${amount}</strong> for <strong>${chapterName}</strong> has been received and confirmed.
+      Thank you — your chapter is now in good standing.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+      <tr style="background:#f9fafb;">
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Chapter</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${chapterName}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Amount paid</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${amount}</td>
+      </tr>
+    </table>
+    ${btn(`${siteUrl}/dashboard/chapter/payments`, 'View Payment History')}
+  `;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Payment confirmed — ${chapterName} chapter dues`,
+    html: baseHtml('Chapter Dues Payment Confirmed', body),
+  });
+}
+
+export async function sendAdminChapterPaymentAlertEmail({
+  to,
+  chapterName,
+  payerName,
+  payerEmail,
+  amountCents,
+  siteUrl,
+}: {
+  to: string;
+  chapterName: string;
+  payerName: string | null;
+  payerEmail: string | null;
+  amountCents: number;
+  siteUrl: string;
+}) {
+  const resend = getResend();
+  if (!resend) return;
+
+  const amount = (amountCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const paidBy = payerName ?? payerEmail ?? 'Unknown';
+
+  const body = `
+    <p style="color:#374151;line-height:1.6;">A chapter dues payment has been received.</p>
+    <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+      <tr style="background:#f9fafb;">
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Chapter</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${chapterName}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Paid by</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${paidBy}${payerEmail ? ` &lt;${payerEmail}&gt;` : ''}</td>
+      </tr>
+      <tr style="background:#f9fafb;">
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Amount</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${amount}</td>
+      </tr>
+    </table>
+    ${btn(`${siteUrl}/dashboard/admin`, 'View Admin Dashboard')}
+  `;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Chapter payment received — ${chapterName} (${amount})`,
+    html: baseHtml('Chapter Payment Received', body),
+  });
+}
+
 export async function sendRsvpConfirmationEmail({
   to,
   name,
