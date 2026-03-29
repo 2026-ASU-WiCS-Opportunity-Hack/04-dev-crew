@@ -2202,10 +2202,13 @@ body[data-template="dark"] .site-header__inner {
 }
 
 .site-wordmark__logo {
-  width: 2rem;
-  height: 2rem;
-  object-fit: cover;
-  border-radius: 0.55rem;
+  width: auto;
+  max-width: 7.5rem;
+  height: 2.4rem;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: 0;
+  flex-shrink: 0;
 }
 
 .site-wordmark--footer {
