@@ -1,17 +1,13 @@
+export const revalidate = 30;
+
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCoach } from '@/lib/data/coach';
 import CoachProfileEditor from '@/components/coaches/CoachProfileEditor';
-import type { CoachRecord } from '@/lib/types';
 
 const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
 
 export default async function CoachProfilePage() {
-  const supabase = createSupabaseServerClient();
-  const { data: me } = await supabase
-    .from('coaches')
-    .select('*')
-    .eq('id', CRAIG_UUID)
-    .single<CoachRecord>();
+  const me = await getCoach(CRAIG_UUID);
 
   if (!me) {
     return <div className="coaches-empty"><p>Coach profile not found.</p></div>;

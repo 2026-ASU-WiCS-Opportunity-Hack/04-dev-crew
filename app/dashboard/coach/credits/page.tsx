@@ -1,3 +1,5 @@
+export const revalidate = 30;
+
 import CeCreditsTracker from '@/components/coaches/CeCreditsTracker';
 
 const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';

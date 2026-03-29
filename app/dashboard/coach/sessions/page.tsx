@@ -1,16 +1,12 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+export const revalidate = 30;
+
+import { getCoach } from '@/lib/data/coach';
 import SessionLogForm from '@/components/coaches/SessionLogForm';
-import type { CoachRecord } from '@/lib/types';
 
 const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
 
 export default async function CoachSessionsPage() {
-  const supabase = createSupabaseServerClient();
-  const { data: me } = await supabase
-    .from('coaches')
-    .select('id, full_name, total_session_hours')
-    .eq('id', CRAIG_UUID)
-    .single<Pick<CoachRecord, 'id' | 'full_name' | 'total_session_hours'>>();
+  const me = await getCoach(CRAIG_UUID);
 
   return (
     <>
