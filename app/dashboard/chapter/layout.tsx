@@ -1,5 +1,9 @@
+import { ChapterAccessDebug } from "@/components/debug/ChapterAccessDebug";
 import { ChapterDashboardProvider } from "@/components/providers/ChapterDashboardProvider";
-import { requireChapterDashboardAccess } from "@/lib/chapter-access";
+import {
+  getChapterAccessDebugInfo,
+  requireChapterDashboardAccess,
+} from "@/lib/chapter-access";
 
 export default async function ChapterDashboardLayout({
   children,
@@ -9,16 +13,21 @@ export default async function ChapterDashboardLayout({
   const access = await requireChapterDashboardAccess();
 
   return (
-    <ChapterDashboardProvider
-      value={{
-        chapterId: access.chapter?.id ?? null,
-        chapterSlug: access.chapter?.slug ?? null,
-        chapterName: access.chapter?.name ?? null,
-        isSuperAdmin: access.isSuperAdmin,
-        orgRole: access.profile?.role ?? null,
-      }}
-    >
-      {children}
-    </ChapterDashboardProvider>
+    <>
+      <ChapterAccessDebug
+        info={getChapterAccessDebugInfo(access)}
+      />
+      <ChapterDashboardProvider
+        value={{
+          chapterId: access.chapter?.id ?? null,
+          chapterSlug: access.chapter?.slug ?? null,
+          chapterName: access.chapter?.name ?? null,
+          isSuperAdmin: access.isSuperAdmin,
+          orgRole: access.profile?.role ?? null,
+        }}
+      >
+        {children}
+      </ChapterDashboardProvider>
+    </>
   );
 }

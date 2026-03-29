@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AppRole, ChapterRecord, ProfileRecord } from "@/lib/types";
 
@@ -54,8 +53,7 @@ export async function getOptionalChapterAccessContext(): Promise<AccessContext |
 
   let chapter: ChapterRecord | null = null;
   if (profile?.chapter_id) {
-    const adminSupabase = createSupabaseAdminClient();
-    const { data: chapterData } = await adminSupabase
+    const { data: chapterData } = await supabase
       .from("chapters")
       .select("*")
       .eq("id", profile.chapter_id)

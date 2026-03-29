@@ -1,15 +1,13 @@
-import type { CSSProperties, ReactNode } from "react";
+"use client";
+
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { centsToCurrency } from "@/lib/utils";
 import type { ChapterRecord, CoachRecord, PaymentRecord, EventRecord, CampaignRecord } from "@/lib/types";
 
 interface ChapterDashboardProps {
-  chapter: ChapterRecord;
-  coaches: CoachRecord[];
-  payments: PaymentRecord[];
-  events: EventRecord[];
-  campaigns: CampaignRecord[];
-  enrollments: EnrollmentSummaryRecord[];
+  chapterId: string;
 }
 
 interface EnrollmentSummaryRecord {
@@ -21,14 +19,42 @@ interface EnrollmentSummaryRecord {
   created_at: string;
 }
 
-export function ChapterDashboard({
-  chapter,
-  coaches,
-  payments,
-  events,
-  campaigns,
-  enrollments,
-}: ChapterDashboardProps) {
+export function ChapterDashboard({ chapterId }: ChapterDashboardProps) {
+  const [chapter, setChapter] = useState<ChapterRecord | null>(null);
+  const [coaches, setCoaches] = useState<CoachRecord[]>([]);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [events, setEvents] = useState<EventRecord[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentSummaryRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+
+    async function load() {
+      const [chapterRes, coachesRes, paymentsRes, eventsRes, campaignsRes, enrollmentsRes] = await Promise.all([
+        supabase.from("chapters").select("*").eq("id", chapterId).single(),
+        supabase.from("coaches").select("*").eq("chapter_id", chapterId).order("full_name"),
+        supabase.from("payments").select("*").eq("chapter_id", chapterId).order("created_at", { ascending: false }).limit(10),
+        supabase.from("events").select("*").eq("chapter_id", chapterId).order("event_date", { ascending: true }).limit(8),
+        supabase.from("campaigns").select("*").eq("chapter_id", chapterId).order("created_at", { ascending: false }).limit(5),
+        supabase.from("enrollments").select("*").eq("chapter_id", chapterId).order("created_at", { ascending: false }).limit(5),
+      ]);
+      setChapter(chapterRes.data as ChapterRecord | null);
+      setCoaches((coachesRes.data as CoachRecord[]) ?? []);
+      setPayments((paymentsRes.data as PaymentRecord[]) ?? []);
+      setEvents((eventsRes.data as EventRecord[]) ?? []);
+      setCampaigns((campaignsRes.data as CampaignRecord[]) ?? []);
+      setEnrollments((enrollmentsRes.data as EnrollmentSummaryRecord[]) ?? []);
+      setLoading(false);
+    }
+
+    load();
+  }, [chapterId]);
+
+  if (loading) return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading...</p>;
+  if (!chapter) return <p style={{ color: "#dc2626", fontSize: "0.9rem" }}>Chapter not found</p>;
+
   const approvedCoaches = coaches.filter((coach) => coach.is_approved).length;
   const pendingCoachApprovals = coaches.filter((coach) => !coach.is_approved).length;
   const paidRevenue = payments.filter((payment) => payment.status === "paid").reduce((sum, payment) => sum + payment.amount_cents, 0);
