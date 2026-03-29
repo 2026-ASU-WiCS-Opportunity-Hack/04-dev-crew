@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/payments",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/recertification",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}
