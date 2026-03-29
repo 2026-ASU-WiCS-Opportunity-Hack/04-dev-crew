@@ -12,10 +12,7 @@ export default async function AdminChaptersPage() {
     .select("*")
     .order("name");
 
-  const visibleChapterNames = new Set(["WIAL Nigeria", "WIAL USA"]);
-  const chapters = ((data as ChapterRecord[]) ?? []).filter((chapter) =>
-    visibleChapterNames.has(chapter.name),
-  );
+  const chapters = (data as ChapterRecord[]) ?? [];
 
   return (
     <div>

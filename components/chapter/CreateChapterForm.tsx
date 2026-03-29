@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ChapterPreview } from "@/components/chapter/ChapterPreview";
 import type { GeneratedChapterContent, ChapterGenerationInput } from "@/lib/types";
 import { slugify } from "@/lib/utils";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface CreateChapterFormProps {
   onCreated?: () => void;
@@ -16,7 +15,7 @@ export function CreateChapterForm({ onCreated }: CreateChapterFormProps) {
   const [language, setLanguage] = useState("en");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [externalWebsite, setExternalWebsite] = useState("");
+  const [password, setPassword] = useState("");
   const [coachNames, setCoachNames] = useState("");
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -26,6 +25,7 @@ export function CreateChapterForm({ onCreated }: CreateChapterFormProps) {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleGenerate() {
     setError(null);
@@ -69,26 +69,45 @@ export function CreateChapterForm({ onCreated }: CreateChapterFormProps) {
       setError("Name and country are required");
       return;
     }
+    if (!contactEmail || !password) {
+      setError("Contact email and password are required to create the chapter lead account");
+      return;
+    }
     setSaving(true);
     setError(null);
-    try {
-      const supabase = createSupabaseBrowserClient();
-      const slug = slugify(name);
+    setSuccess(null);
 
-      const { error: insertError } = await supabase.from("chapters").insert({
-        name,
-        slug,
-        country,
-        language,
-        contact_name: contactName || null,
-        contact_email: contactEmail || null,
-        external_website: externalWebsite || null,
-        content_json: preview,
-        is_active: true,
+    try {
+      const res = await fetch("/api/chapters/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          slug: slugify(name),
+          country,
+          language,
+          contactName: contactName || null,
+          contactEmail: contactEmail || null,
+          password,
+          content: preview,
+        }),
       });
 
-      if (insertError) throw insertError;
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error ?? "Failed to create chapter");
 
+      setSuccess(`Chapter "${name}" created successfully. Login credentials have been sent to ${contactEmail}.`);
+      setName("");
+      setCountry("");
+      setLanguage("en");
+      setContactName("");
+      setContactEmail("");
+      setPassword("");
+      setCoachNames("");
+      setEventTitle("");
+      setEventDate("");
+      setTestimonial("");
+      setPreview(null);
       onCreated?.();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to save chapter");
@@ -139,28 +158,32 @@ export function CreateChapterForm({ onCreated }: CreateChapterFormProps) {
           />
         </div>
         <div className="contact-form__field-group">
-          <label className="contact-form__label">Contact Email</label>
+          <label className="contact-form__label">Contact Email <span>*</span></label>
           <input
             type="email"
             value={contactEmail}
             onChange={(e) => setContactEmail(e.target.value)}
+            placeholder="lead@example.com"
           />
         </div>
         <div className="contact-form__field-group">
-          <label className="contact-form__label">External Website (optional)</label>
+          <label className="contact-form__label">
+            One-Time Password <span>*</span>
+            <span className="form-hint" style={{ display: "inline", marginLeft: "0.4rem" }}>
+              (chapter lead will use this to log in)
+            </span>
+          </label>
           <input
-            type="url"
-            value={externalWebsite}
-            onChange={(e) => setExternalWebsite(e.target.value)}
-            placeholder="https://example.com"
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Min. 8 characters"
           />
         </div>
       </div>
 
       <div className="page-divider" />
-      <p className="eyebrow">
-        AI Content Generation
-      </p>
+      <p className="eyebrow">AI Content Generation</p>
       <p style={{ fontSize: "0.9rem", color: "var(--muted)", marginTop: "-0.5rem" }}>
         Optional — provide details for AI to generate page content
       </p>
@@ -204,6 +227,9 @@ export function CreateChapterForm({ onCreated }: CreateChapterFormProps) {
       {error && (
         <p style={{ color: "#dc2626", fontSize: "0.9rem" }}>{error}</p>
       )}
+      {success && (
+        <p style={{ color: "#15803d", fontSize: "0.9rem", fontWeight: 600 }}>{success}</p>
+      )}
 
       <div className="stack-actions">
         <button
@@ -218,11 +244,11 @@ export function CreateChapterForm({ onCreated }: CreateChapterFormProps) {
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving || !name || !country}
+          disabled={saving || !name || !country || !contactEmail || !password}
           className="button-primary"
-          style={{ opacity: saving || !name || !country ? 0.5 : 1 }}
+          style={{ opacity: saving || !name || !country || !contactEmail || !password ? 0.5 : 1 }}
         >
-          {saving ? "Saving..." : "Create Chapter"}
+          {saving ? "Creating..." : "Create Chapter"}
         </button>
       </div>
 
