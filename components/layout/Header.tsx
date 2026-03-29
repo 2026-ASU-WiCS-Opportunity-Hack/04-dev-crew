@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { HeaderAuthButton } from '@/components/layout/HeaderAuthButton';
 import { MobileNav } from '@/components/layout/MobileNav';
 
 const defaultNavItems = [
@@ -12,8 +13,8 @@ const defaultNavItems = [
 
 type HeaderProps = {
   siteName?: string;
-  headerCtaLabel?: string;
   logoUrl?: string | null;
+  isAuthenticated?: boolean;
   navItems?: Array<{
     href: string;
     label: string;
@@ -22,8 +23,8 @@ type HeaderProps = {
 
 export function Header({
   siteName = 'WIAL Global',
-  headerCtaLabel = 'Login',
   logoUrl,
+  isAuthenticated = false,
   navItems = defaultNavItems,
 }: HeaderProps) {
   return (
@@ -66,9 +67,7 @@ export function Header({
             </svg>
           </button>
 
-          <Link className="site-header__cta" href="/login">
-            {headerCtaLabel}
-          </Link>
+          <HeaderAuthButton isAuthenticated={isAuthenticated} />
 
           <MobileNav items={navItems} />
         </div>
