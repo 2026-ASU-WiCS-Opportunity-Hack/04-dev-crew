@@ -1,8 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
+import { useChapterDashboardContext } from "@/components/providers/ChapterDashboardProvider";
 import { TestimonialCard } from "@/components/testimonials/TestimonialCard";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface Testimonial {
   id: string;
@@ -16,7 +18,6 @@ interface Testimonial {
 
 export default function ChapterTestimonialsPage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [chapterId, setChapterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [quoteText, setQuoteText] = useState("");
@@ -24,33 +25,25 @@ export default function ChapterTestimonialsPage() {
   const [authorTitle, setAuthorTitle] = useState("");
   const [organization, setOrganization] = useState("");
   const [saving, setSaving] = useState(false);
+  const { chapterId } = useChapterDashboardContext();
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    const supabase = createSupabaseBrowserClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("chapter_id")
-      .eq("id", user.id)
-      .single();
-
-    const cid = (profile as { chapter_id: string | null } | null)?.chapter_id ?? null;
-    setChapterId(cid);
-
-    if (cid) {
-      const { data } = await supabase
-        .from("testimonials")
-        .select("*")
-        .eq("chapter_id", cid)
-        .order("created_at", { ascending: false });
-      setTestimonials((data as Testimonial[]) ?? []);
+    if (!chapterId) {
+      setLoading(false);
+      return;
     }
+
+    loadData(chapterId);
+  }, [chapterId]);
+
+  async function loadData(currentChapterId: string) {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase
+      .from("testimonials")
+      .select("*")
+      .eq("chapter_id", currentChapterId)
+      .order("created_at", { ascending: false });
+    setTestimonials((data as Testimonial[]) ?? []);
     setLoading(false);
   }
 
@@ -72,7 +65,7 @@ export default function ChapterTestimonialsPage() {
     setOrganization("");
     setShowForm(false);
     setSaving(false);
-    await loadData();
+    await loadData(chapterId);
   }
 
   if (loading) return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading...</p>;

@@ -2,49 +2,45 @@
 
 import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useChapterDashboardContext } from "@/components/providers/ChapterDashboardProvider";
 import type { CoachRecord } from "@/lib/types";
 
 export default function ChapterCoachesPage() {
   const [coaches, setCoaches] = useState<CoachRecord[]>([]);
-  const [chapterId, setChapterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { chapterId } = useChapterDashboardContext();
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    const supabase = createSupabaseBrowserClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("chapter_id")
-      .eq("id", user.id)
-      .single();
-
-    const cid = (profile as { chapter_id: string | null } | null)?.chapter_id ?? null;
-    setChapterId(cid);
-
-    if (cid) {
-      const { data } = await supabase
-        .from("coaches")
-        .select("*")
-        .eq("chapter_id", cid)
-        .order("full_name");
-      setCoaches((data as CoachRecord[]) ?? []);
+    if (!chapterId) {
+      setLoading(false);
+      return;
     }
+
+    loadData(chapterId);
+  }, [chapterId]);
+
+  async function loadData(currentChapterId: string) {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase
+      .from("coaches")
+      .select("*")
+      .eq("chapter_id", currentChapterId)
+      .order("full_name");
+    setCoaches((data as CoachRecord[]) ?? []);
     setLoading(false);
   }
 
   async function toggleApproval(coach: CoachRecord) {
+    if (!chapterId) {
+      return;
+    }
+
     const supabase = createSupabaseBrowserClient();
     await supabase
       .from("coaches")
       .update({ is_approved: !coach.is_approved })
       .eq("id", coach.id);
-    await loadData();
+    await loadData(chapterId);
   }
 
   if (loading) return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading...</p>;
