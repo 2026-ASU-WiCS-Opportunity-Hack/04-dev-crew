@@ -144,14 +144,14 @@ export function AccessibilityWidget() {
             color: '#fff',
             border: 'none',
             cursor: 'pointer',
-            fontSize: '1.3rem',
+            fontSize: '0.95rem',
             boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          ♿
+          Aa
         </button>
 
         {/* Panel */}

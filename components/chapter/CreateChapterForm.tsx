@@ -169,9 +169,6 @@ export function CreateChapterForm({ onCreated }: CreateChapterFormProps) {
         <div className="contact-form__field-group">
           <label className="contact-form__label">
             One-Time Password <span>*</span>
-            <span className="form-hint" style={{ display: "inline", marginLeft: "0.4rem" }}>
-              (chapter lead will use this to log in)
-            </span>
           </label>
           <input
             type="text"

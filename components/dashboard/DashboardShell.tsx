@@ -75,25 +75,11 @@ export function DashboardShell({
 
               <div className="dashboard-shell__divider" />
 
-              <NavLink href="/dashboard/chapter/events" icon="◌" collapsed={collapsed}>
+              <NavLink href="/dashboard/admin/events" icon="◌" collapsed={collapsed}>
                 Events
               </NavLink>
-              <NavLink href="/dashboard/chapter/payments" icon="$" collapsed={collapsed}>
+              <NavLink href="/dashboard/admin/payments" icon="$" collapsed={collapsed}>
                 Payments
-              </NavLink>
-              <NavLink
-                href="/dashboard/chapter/enrollments"
-                icon="≣"
-                collapsed={collapsed}
-              >
-                Enrollments
-              </NavLink>
-              <NavLink
-                href="/dashboard/chapter/campaigns"
-                icon="✉"
-                collapsed={collapsed}
-              >
-                Campaigns
               </NavLink>
             </>
           ) : null}

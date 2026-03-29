@@ -16,7 +16,7 @@ export const APP_SESSION_INACTIVITY_TIMEOUT_MINUTES =
 export const APP_SESSION_INACTIVITY_TIMEOUT_MS =
   APP_SESSION_INACTIVITY_TIMEOUT_MINUTES * 60 * 1000;
 
-export const APP_SESSION_ACTIVITY_UPDATE_INTERVAL_MS = 5 * 60 * 1000;
+export const APP_SESSION_ACTIVITY_UPDATE_INTERVAL_MS = 30* 60 * 1000;
 
 export function getDashboardPathForRole(role: AppRole) {
   switch (role) {
