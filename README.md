@@ -83,6 +83,20 @@ A unified AI-native web platform where:
 ### Coach Profile / Membership
 ![Coach Dashboard](image-4.png)
 
+admin@wial.test
+admin123456
+
+Lead: 
+usa.lead@wial.test
+TestLead123
+
+coach: coach@example.com
+pass: coach@123
+
+Content Creator: siyasingh0in@gmail.com
+pass: 243006
+
+
 
 ## Getting Started
 
