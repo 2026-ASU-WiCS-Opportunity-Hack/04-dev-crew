@@ -44,6 +44,14 @@ export function Header() {
             </svg>
           </button>
 
+          <Link className="site-header__dashboard" href="/dashboard/coach">
+            Dashboard
+          </Link>
+
+          <Link className="site-header__dashboard" href="/dashboard/admin">
+            Admin
+          </Link>
+
           <Link className="site-header__cta" href="/certification">
             Join WIAL
           </Link>
