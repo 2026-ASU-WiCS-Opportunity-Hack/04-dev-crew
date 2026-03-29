@@ -1,14 +1,15 @@
 import { notFound } from 'next/navigation';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { requireChapterDashboardAccess } from '@/lib/chapter-access';
 import CreateJobForm from '@/components/jobs/CreateJobForm';
 import type { JobListingRecord } from '@/lib/types';
-
-const DEMO_CHAPTER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface Props { params: { id: string } }
 
 export default async function EditJobPage({ params }: Props) {
-  const supabase = createSupabaseAdminClient();
+  const [{ chapter }, supabase] = [await requireChapterDashboardAccess(), createSupabaseAdminClient()];
+  if (!chapter) return null;
+
   const { data: listing } = await supabase
     .from('job_listings')
     .select('*')
@@ -27,7 +28,7 @@ export default async function EditJobPage({ params }: Props) {
         <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>{listing.title} · {listing.organization}</p>
       </div>
 
-      <CreateJobForm mode="edit" chapterId={listing.chapter_id ?? DEMO_CHAPTER_ID} initialValues={listing} />
+      <CreateJobForm mode="edit" chapterId={listing.chapter_id ?? chapter.id} initialValues={listing} />
     </>
   );
 }

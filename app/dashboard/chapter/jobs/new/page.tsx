@@ -1,9 +1,10 @@
+import { requireChapterDashboardAccess } from '@/lib/chapter-access';
 import CreateJobForm from '@/components/jobs/CreateJobForm';
 
-// Hardcoded for demo — replace with real session chapter_id
-const DEMO_CHAPTER_ID = '00000000-0000-0000-0000-000000000000';
+export default async function NewJobPage() {
+  const { chapter } = await requireChapterDashboardAccess();
+  if (!chapter) return null;
 
-export default function NewJobPage() {
   return (
     <>
       <div style={{ marginBottom: '1.75rem' }}>
@@ -16,7 +17,7 @@ export default function NewJobPage() {
         </p>
       </div>
 
-      <CreateJobForm mode="create" chapterId={DEMO_CHAPTER_ID} />
+      <CreateJobForm mode="create" chapterId={chapter.id} />
     </>
   );
 }
