@@ -294,6 +294,117 @@ export function AdminDashboard() {
         </div>
       </section>
 
+      {/* Platform Analytics */}
+      <section>
+        <h3 className="section-title" style={{ fontSize: "1.25rem" }}>Platform Analytics</h3>
+        <div style={{ display: "grid", gap: "1.25rem", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", marginTop: "0.75rem" }}>
+
+          {/* Certification Level Breakdown */}
+          <div className="contact-card" style={{ padding: "1.5rem" }}>
+            <p style={{ fontWeight: 700, fontSize: "0.85rem", textTransform: "uppercase", color: "var(--muted)", marginBottom: "1rem" }}>
+              Certification Levels
+            </p>
+            {(["CALC", "PALC", "SALC", "MALC"] as const).map((lvl) => {
+              const count = coaches.filter((c) => c.certification_level === lvl).length;
+              const pct = coaches.length > 0 ? Math.round((count / coaches.length) * 100) : 0;
+              const colors: Record<string, string> = { CALC: "#1a56db", PALC: "#7c3aed", SALC: "#059669", MALC: "#d97706" };
+              return (
+                <div key={lvl} style={{ marginBottom: "0.85rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "0.3rem" }}>
+                    <span style={{ fontWeight: 600 }}>{lvl}</span>
+                    <span style={{ color: "var(--muted)" }}>{count} coach{count !== 1 ? "es" : ""} &bull; {pct}%</span>
+                  </div>
+                  <div style={{ height: "8px", background: "var(--surface-muted)", borderRadius: "4px", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: colors[lvl], borderRadius: "4px", transition: "width 0.4s ease" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Coaches per Chapter */}
+          <div className="contact-card" style={{ padding: "1.5rem" }}>
+            <p style={{ fontWeight: 700, fontSize: "0.85rem", textTransform: "uppercase", color: "var(--muted)", marginBottom: "1rem" }}>
+              Coaches per Chapter
+            </p>
+            {chapters
+              .map((ch) => ({ name: ch.name, count: coaches.filter((c) => c.chapter_id === ch.id).length }))
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 8)
+              .map(({ name, count }) => {
+                const maxCount = Math.max(...chapters.map((ch) => coaches.filter((c) => c.chapter_id === ch.id).length), 1);
+                const pct = Math.round((count / maxCount) * 100);
+                return (
+                  <div key={name} style={{ marginBottom: "0.85rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "0.3rem" }}>
+                      <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{name}</span>
+                      <span style={{ color: "var(--muted)" }}>{count}</span>
+                    </div>
+                    <div style={{ height: "8px", background: "var(--surface-muted)", borderRadius: "4px", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${pct}%`, background: "#1a56db", borderRadius: "4px", transition: "width 0.4s ease" }} />
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          {/* Coach Status Breakdown */}
+          <div className="contact-card" style={{ padding: "1.5rem" }}>
+            <p style={{ fontWeight: 700, fontSize: "0.85rem", textTransform: "uppercase", color: "var(--muted)", marginBottom: "1rem" }}>
+              Coach Status
+            </p>
+            {(() => {
+              const approved = coaches.filter((c) => c.is_approved).length;
+              const pending = coaches.length - approved;
+              const approvedPct = coaches.length > 0 ? Math.round((approved / coaches.length) * 100) : 0;
+              const pendingPct = coaches.length > 0 ? 100 - approvedPct : 0;
+              return (
+                <>
+                  <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1.5rem" }}>
+                    <div style={{ textAlign: "center" }}>
+                      <p style={{ fontSize: "2rem", fontWeight: 700, color: "#15803d", lineHeight: 1 }}>{approved}</p>
+                      <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "0.25rem" }}>Approved</p>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <p style={{ fontSize: "2rem", fontWeight: 700, color: "#a16207", lineHeight: 1 }}>{pending}</p>
+                      <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "0.25rem" }}>Pending</p>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <p style={{ fontSize: "2rem", fontWeight: 700, color: "#1a56db", lineHeight: 1 }}>{coaches.length}</p>
+                      <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "0.25rem" }}>Total</p>
+                    </div>
+                  </div>
+                  <div style={{ height: "16px", background: "var(--surface-muted)", borderRadius: "8px", overflow: "hidden", display: "flex" }}>
+                    <div style={{ height: "100%", width: `${approvedPct}%`, background: "#15803d", transition: "width 0.4s ease" }} />
+                    <div style={{ height: "100%", width: `${pendingPct}%`, background: "#a16207", transition: "width 0.4s ease" }} />
+                  </div>
+                  <div style={{ display: "flex", gap: "1rem", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--muted)" }}>
+                    <span><span style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "2px", background: "#15803d", marginRight: "4px" }} />{approvedPct}% approved</span>
+                    <span><span style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "2px", background: "#a16207", marginRight: "4px" }} />{pendingPct}% pending</span>
+                  </div>
+
+                  {/* Coaches with expiring certs (next 90 days) */}
+                  {(() => {
+                    const now = Date.now();
+                    const expiringSoon = coaches.filter((c) => {
+                      if (!(c as unknown as CoachWithExpiry).certification_expiry) return false;
+                      const days = Math.round((new Date((c as unknown as CoachWithExpiry).certification_expiry!).getTime() - now) / 86400000);
+                      return days > 0 && days <= 90;
+                    }).length;
+                    return expiringSoon > 0 ? (
+                      <div style={{ marginTop: "1.25rem", padding: "0.75rem 1rem", background: "#fef9c3", borderRadius: "8px", fontSize: "0.85rem", color: "#a16207" }}>
+                        <strong>{expiringSoon}</strong> coach{expiringSoon !== 1 ? "es" : ""} with certification expiring within 90 days
+                      </div>
+                    ) : null;
+                  })()}
+                </>
+              );
+            })()}
+          </div>
+
+        </div>
+      </section>
+
       {/* Generated Report Table */}
       {showReport && (
         <section>
