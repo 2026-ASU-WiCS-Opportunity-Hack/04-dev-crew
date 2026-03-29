@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140" role="img" aria-labelledby="title desc">
+  <title id="title">WIAL logo</title>
+  <desc id="desc">A stylized WIAL mark in olive and magenta with the organization name.</desc>
+  <rect width="320" height="140" fill="#ffffff" />
+  <rect x="18" y="80" width="18" height="36" rx="3" fill="#c1b61c" />
+  <rect x="42" y="60" width="18" height="56" rx="3" fill="#b2aa14" />
+  <polygon points="70,116 88,35 107,116" fill="#cf0a47" />
+  <polygon points="112,116 132,15 152,116" fill="#d10f49" />
+  <polygon points="156,15 192,15 212,116 176,116" fill="#d10f49" />
+  <text x="224" y="48" fill="#d10f49" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700">WORLD</text>
+  <text x="224" y="67" fill="#d10f49" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700">INSTITUTE FOR</text>
+  <text x="224" y="86" fill="#d10f49" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700">ACTION</text>
+  <text x="224" y="105" fill="#d10f49" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700">LEARNING</text>
+</svg>

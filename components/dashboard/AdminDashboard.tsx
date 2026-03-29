@@ -1,0 +1,393 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { centsToCurrency } from "@/lib/utils";
+import { RevenueChart } from "@/components/payments/RevenueChart";
+import type { ChapterRecord, CoachRecord, PaymentRecord } from "@/lib/types";
+
+interface CoachWithExpiry {
+  id: string;
+  full_name: string;
+  certification_level: string;
+  certification_expiry: string | null;
+  contact_email: string | null;
+  location_country: string | null;
+  chapter_id: string | null;
+}
+
+interface ReminderPreview {
+  coachName: string;
+  daysLeft: number;
+  subject: string;
+  body: string;
+}
+
+export function AdminDashboard() {
+  const [chapters, setChapters] = useState<ChapterRecord[]>([]);
+  const [coaches, setCoaches] = useState<CoachRecord[]>([]);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  /* Report state */
+  const [showReport, setShowReport] = useState(false);
+
+  /* Recertification state */
+  const [recertCoaches, setRecertCoaches] = useState<CoachWithExpiry[]>([]);
+  const [recertLoading, setRecertLoading] = useState(false);
+  const [reminderPreviews, setReminderPreviews] = useState<ReminderPreview[]>([]);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+
+    async function load() {
+      const [chaptersRes, coachesRes, paymentsRes] = await Promise.all([
+        supabase.from("chapters").select("*").order("name"),
+        supabase.from("coaches").select("*").order("full_name"),
+        supabase.from("payments").select("*").order("created_at", { ascending: false }),
+      ]);
+      setChapters((chaptersRes.data as ChapterRecord[]) ?? []);
+      setCoaches((coachesRes.data as CoachRecord[]) ?? []);
+      setPayments((paymentsRes.data as PaymentRecord[]) ?? []);
+      setLoading(false);
+    }
+
+    load();
+  }, []);
+
+  const totalRevenue = payments
+    .filter((p) => p.status === "paid")
+    .reduce((sum, p) => sum + p.amount_cents, 0);
+
+  /* ── Revenue per chapter for chart ── */
+  const chapterRevenueData = chapters.map((ch) => {
+    const chPayments = payments.filter((p) => p.chapter_id === ch.id);
+    const paidCents = chPayments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount_cents, 0);
+    const pendingCents = chPayments.filter((p) => p.status === "pending").reduce((s, p) => s + p.amount_cents, 0);
+    const overdueCount = chPayments.filter((p) => p.status === "overdue").length;
+    return {
+      chapterName: ch.name,
+      totalCents: chPayments.reduce((s, p) => s + p.amount_cents, 0),
+      paidCents,
+      pendingCents,
+      overdueCount,
+    };
+  });
+
+  /* ── Generate Report (per-chapter breakdown + CSV export) ── */
+  function buildReportRows() {
+    return chapters.map((ch) => {
+      const chCoaches = coaches.filter((c) => c.chapter_id === ch.id);
+      const chPayments = payments.filter((p) => p.chapter_id === ch.id);
+      const paid = chPayments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount_cents, 0);
+      const pending = chPayments.filter((p) => p.status === "pending").reduce((s, p) => s + p.amount_cents, 0);
+      const certBreakdown = (["CALC", "PALC", "SALC", "MALC"] as const).map(
+        (lvl) => chCoaches.filter((c) => c.certification_level === lvl).length
+      );
+      return {
+        name: ch.name,
+        country: ch.country,
+        totalCoaches: chCoaches.length,
+        approved: chCoaches.filter((c) => c.is_approved).length,
+        calc: certBreakdown[0],
+        palc: certBreakdown[1],
+        salc: certBreakdown[2],
+        malc: certBreakdown[3],
+        revenuePaid: paid,
+        revenuePending: pending,
+        payments: chPayments.length,
+      };
+    });
+  }
+
+  function exportCsv() {
+    const rows = buildReportRows();
+    const header = "Chapter,Country,Total Coaches,Approved,CALC,PALC,SALC,MALC,Revenue Paid,Revenue Pending,Payments";
+    const csv = [
+      header,
+      ...rows.map((r) =>
+        [r.name, r.country, r.totalCoaches, r.approved, r.calc, r.palc, r.salc, r.malc, centsToCurrency(r.revenuePaid), centsToCurrency(r.revenuePending), r.payments].join(",")
+      ),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `wial-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /* ── Check Recertification ── */
+  const checkRecertification = useCallback(async () => {
+    setRecertLoading(true);
+    setReminderPreviews([]);
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase
+      .from("coaches")
+      .select("id, full_name, certification_level, certification_expiry, contact_email, location_country, chapter_id")
+      .not("certification_expiry", "is", null)
+      .order("certification_expiry", { ascending: true });
+
+    const now = new Date();
+    const coachesNearExpiry = ((data as CoachWithExpiry[]) ?? []).filter((c) => {
+      if (!c.certification_expiry) return false;
+      const daysDiff = Math.round((new Date(c.certification_expiry).getTime() - now.getTime()) / 86400000);
+      return daysDiff > 0 && daysDiff <= 90;
+    });
+    setRecertCoaches(coachesNearExpiry);
+
+    /* Generate AI reminder previews for up to 5 coaches */
+    const previews: ReminderPreview[] = [];
+    for (const coach of coachesNearExpiry.slice(0, 5)) {
+      const daysLeft = Math.round((new Date(coach.certification_expiry!).getTime() - now.getTime()) / 86400000);
+      const reminderCount = daysLeft <= 30 ? 3 : daysLeft <= 60 ? 2 : 1;
+      try {
+        const res = await fetch("/api/ai/generate-reminder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payerName: coach.full_name,
+            amount: 0,
+            studentCount: 0,
+            paymentType: "recertification",
+            reminderCount,
+          }),
+        });
+        if (res.ok) {
+          const d = await res.json();
+          const reminder = d.data ?? d;
+          previews.push({
+            coachName: coach.full_name,
+            daysLeft,
+            subject: reminder.subject ?? "Recertification Reminder",
+            body: reminder.body ?? "",
+          });
+        }
+      } catch {
+        /* skip if AI call fails */
+      }
+    }
+    setReminderPreviews(previews);
+    setRecertLoading(false);
+  }, []);
+
+  if (loading) {
+    return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading dashboard...</p>;
+  }
+
+  const reportRows = showReport ? buildReportRows() : [];
+
+  return (
+    <div style={{ display: "grid", gap: "2rem" }}>
+      {/* Stats */}
+      <div className="hero-stats">
+        <div className="stat-card"><strong>{chapters.length}</strong><span>Chapters</span></div>
+        <div className="stat-card"><strong>{coaches.length}</strong><span>Coaches</span></div>
+        <div className="stat-card"><strong>{payments.length}</strong><span>Payments</span></div>
+        <div className="stat-card"><strong>{centsToCurrency(totalRevenue)}</strong><span>Total Revenue</span></div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="stack-actions" style={{ flexWrap: "wrap" }}>
+        <button type="button" onClick={() => setShowReport(!showReport)} className="button-secondary">
+          {showReport ? "Hide Report" : "Generate Report"}
+        </button>
+        <button type="button" onClick={exportCsv} className="button-secondary">
+          Export CSV
+        </button>
+        <button type="button" onClick={checkRecertification} disabled={recertLoading} className="button-secondary" style={{ opacity: recertLoading ? 0.5 : 1 }}>
+          {recertLoading ? "Checking..." : "Check Recertification"}
+        </button>
+      </div>
+
+      {/* Revenue Chart */}
+      <section>
+        <h3 className="section-title" style={{ fontSize: "1.25rem" }}>Revenue by Chapter</h3>
+        <div className="contact-card" style={{ padding: "1.5rem", marginTop: "0.75rem" }}>
+          <RevenueChart data={chapterRevenueData} />
+        </div>
+      </section>
+
+      {/* Generated Report Table */}
+      {showReport && (
+        <section>
+          <h3 className="section-title" style={{ fontSize: "1.25rem" }}>Organization Report</h3>
+          <div className="contact-card" style={{ padding: "1.5rem", overflowX: "auto", marginTop: "0.75rem" }}>
+            <table style={{ width: "100%", textAlign: "left", fontSize: "0.85rem", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  {["Chapter", "Country", "Coaches", "Approved", "CALC", "PALC", "SALC", "MALC", "Revenue (Paid)", "Revenue (Pending)", "Payments"].map((h) => (
+                    <th key={h} style={{ padding: "0.5rem 0.5rem", fontSize: "0.7rem", textTransform: "uppercase", color: "var(--muted)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {reportRows.map((r) => (
+                  <tr key={r.name} style={{ borderBottom: "1px solid var(--border)" }}>
+                    <td style={{ padding: "0.5rem", fontWeight: 600 }}>{r.name}</td>
+                    <td style={{ padding: "0.5rem" }}>{r.country}</td>
+                    <td style={{ padding: "0.5rem" }}>{r.totalCoaches}</td>
+                    <td style={{ padding: "0.5rem" }}>{r.approved}</td>
+                    <td style={{ padding: "0.5rem" }}>{r.calc}</td>
+                    <td style={{ padding: "0.5rem" }}>{r.palc}</td>
+                    <td style={{ padding: "0.5rem" }}>{r.salc}</td>
+                    <td style={{ padding: "0.5rem" }}>{r.malc}</td>
+                    <td style={{ padding: "0.5rem", color: "#15803d" }}>{centsToCurrency(r.revenuePaid)}</td>
+                    <td style={{ padding: "0.5rem", color: "#a16207" }}>{centsToCurrency(r.revenuePending)}</td>
+                    <td style={{ padding: "0.5rem" }}>{r.payments}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Recertification Results */}
+      {recertCoaches.length > 0 && (
+        <section>
+          <h3 className="section-title" style={{ fontSize: "1.25rem" }}>
+            Coaches Due for Recertification ({recertCoaches.length})
+          </h3>
+          <div className="contact-card" style={{ padding: "1.5rem", overflowX: "auto", marginTop: "0.75rem" }}>
+            <table style={{ width: "100%", textAlign: "left", fontSize: "0.9rem", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  {["Name", "Level", "Expiry", "Days Left", "Email"].map((h) => (
+                    <th key={h} style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {recertCoaches.map((c) => {
+                  const daysLeft = Math.round((new Date(c.certification_expiry!).getTime() - Date.now()) / 86400000);
+                  return (
+                    <tr key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td style={{ padding: "0.5rem 0.75rem", fontWeight: 600 }}>{c.full_name}</td>
+                      <td style={{ padding: "0.5rem 0.75rem" }}>{c.certification_level}</td>
+                      <td style={{ padding: "0.5rem 0.75rem" }}>{c.certification_expiry}</td>
+                      <td style={{ padding: "0.5rem 0.75rem" }}>
+                        <span className="badge" style={{
+                          background: daysLeft <= 30 ? "#fee2e2" : daysLeft <= 60 ? "#fef9c3" : "#dcfce7",
+                          color: daysLeft <= 30 ? "#dc2626" : daysLeft <= 60 ? "#a16207" : "#15803d",
+                        }}>
+                          {daysLeft} days
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.5rem 0.75rem", color: "var(--muted)" }}>{c.contact_email ?? "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* AI-generated reminder previews */}
+          {reminderPreviews.length > 0 && (
+            <div style={{ marginTop: "1rem", display: "grid", gap: "1rem" }}>
+              <p className="eyebrow">AI Reminder Previews</p>
+              {reminderPreviews.map((rp) => (
+                <div key={rp.coachName} className="feature-card" style={{ borderLeft: "4px solid var(--brand)" }}>
+                  <p style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+                    To: <strong>{rp.coachName}</strong> &middot; {rp.daysLeft} days left
+                  </p>
+                  <p style={{ fontWeight: 600, marginTop: "0.35rem" }}>{rp.subject}</p>
+                  <p style={{ marginTop: "0.25rem", color: "var(--foreground)", lineHeight: 1.7, fontSize: "0.9rem" }}>{rp.body}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Chapters overview */}
+      <section>
+        <h3 className="section-title" style={{ fontSize: "1.25rem" }}>Chapters</h3>
+        <div className="contact-card" style={{ padding: "1.5rem", overflowX: "auto", marginTop: "0.75rem" }}>
+          <table style={{ width: "100%", textAlign: "left", fontSize: "0.9rem", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Name</th>
+                <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Country</th>
+                <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Lead</th>
+                <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {chapters.map((ch) => (
+                <tr key={ch.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td style={{ padding: "0.5rem 0.75rem", fontWeight: 600 }}>{ch.name}</td>
+                  <td style={{ padding: "0.5rem 0.75rem" }}>{ch.country}</td>
+                  <td style={{ padding: "0.5rem 0.75rem" }}>{ch.contact_name ?? "—"}</td>
+                  <td style={{ padding: "0.5rem 0.75rem" }}>
+                    <span
+                      className="badge"
+                      style={{
+                        background: ch.is_active ? "#dcfce7" : "var(--surface-muted)",
+                        color: ch.is_active ? "#15803d" : "var(--muted)",
+                      }}
+                    >
+                      {ch.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Recent payments */}
+      <section>
+        <h3 className="section-title" style={{ fontSize: "1.25rem" }}>Recent Payments</h3>
+        <div className="contact-card" style={{ padding: "1.5rem", overflowX: "auto", marginTop: "0.75rem" }}>
+          <table style={{ width: "100%", textAlign: "left", fontSize: "0.9rem", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Payer</th>
+                <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Type</th>
+                <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Amount</th>
+                <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.slice(0, 20).map((p) => (
+                <tr key={p.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td style={{ padding: "0.5rem 0.75rem" }}>{p.payer_name}</td>
+                  <td style={{ padding: "0.5rem 0.75rem", textTransform: "capitalize" }}>{p.payment_type}</td>
+                  <td style={{ padding: "0.5rem 0.75rem" }}>{centsToCurrency(p.amount_cents)}</td>
+                  <td style={{ padding: "0.5rem 0.75rem" }}>
+                    <PaymentBadge status={p.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PaymentBadge({ status }: { status: string }) {
+  const bg: Record<string, string> = {
+    paid: "#dcfce7",
+    pending: "#fef9c3",
+    overdue: "#fee2e2",
+    failed: "#fee2e2",
+  };
+  const fg: Record<string, string> = {
+    paid: "#15803d",
+    pending: "#a16207",
+    overdue: "#dc2626",
+    failed: "#dc2626",
+  };
+  return (
+    <span
+      className="badge"
+      style={{ background: bg[status] ?? "var(--surface-muted)", color: fg[status] ?? "var(--muted)" }}
+    >
+      {status}
+    </span>
+  );
+}
