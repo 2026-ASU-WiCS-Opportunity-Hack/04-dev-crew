@@ -128,41 +128,32 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
     setSaving(false);
   }
 
+  const initials = coach.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+
   return (
-    <form onSubmit={handleSave}>
-      {/* Cert badge (read-only) */}
-      <div className="form-section" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Certification Level:</span>
+    <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+      {/* Cert level (read-only) */}
+      <div className="form-section" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '1rem 1.25rem' }}>
+        <span style={{ fontSize: '0.84rem', color: 'var(--muted)' }}>Certification Level:</span>
         <CertBadge level={coach.certification_level} size="md" />
         <span style={{ fontSize: '0.78rem', color: 'var(--muted)', marginLeft: 'auto' }}>
-          {coach.certification_expiry
-            ? `Expires: ${new Date(coach.certification_expiry).toLocaleDateString()}`
-            : ''}
+          {coach.certification_expiry ? `Expires: ${new Date(coach.certification_expiry).toLocaleDateString()}` : ''}
         </span>
       </div>
 
-      {/* Photo upload */}
-      <section className="form-section">
+      {/* Photo */}
+      <div className="form-section">
         <h3>Profile Photo</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div style={{
-            width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
-            background: 'linear-gradient(135deg, var(--accent), var(--brand))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, var(--accent), var(--brand))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {photoPreview
               ? <img src={photoPreview} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <span style={{ color: '#fff', fontWeight: 700, fontSize: '1.4rem' }}>
-                  {coach.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </span>
+              : <span style={{ color: '#fff', fontWeight: 800, fontSize: '1.3rem' }}>{initials}</span>
             }
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{
-              display: 'inline-block', padding: '7px 14px', borderRadius: 8,
-              border: '1px solid var(--border)', background: 'var(--surface)',
-              fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600,
-            }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <label className="button-secondary" style={{ cursor: 'pointer', fontSize: '0.84rem', padding: '0.5rem 1rem' }}>
               Choose Photo
               <input type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
             </label>
@@ -171,12 +162,8 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
                 type="button"
                 onClick={handlePhotoUpload}
                 disabled={uploadingPhoto}
-                style={{
-                  padding: '7px 14px', borderRadius: 8, border: 'none',
-                  background: uploadingPhoto ? 'var(--muted)' : 'var(--accent)',
-                  color: '#fff', fontWeight: 600, fontSize: '0.85rem',
-                  cursor: uploadingPhoto ? 'not-allowed' : 'pointer',
-                }}
+                className="button-primary"
+                style={{ fontSize: '0.84rem', opacity: uploadingPhoto ? 0.6 : 1, cursor: uploadingPhoto ? 'not-allowed' : 'pointer' }}
               >
                 {uploadingPhoto ? 'Uploading…' : 'Upload Photo'}
               </button>
@@ -184,10 +171,10 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
             <p className="form-hint">JPG, PNG or WebP. Max 5MB.</p>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Basic info */}
-      <section className="form-section">
+      <div className="form-section">
         <h3>Basic Information</h3>
         <div className="form-grid-2">
           <div>
@@ -211,12 +198,12 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
             <input className="form-input" value={form.contact_phone} onChange={(e) => update('contact_phone', e.target.value)} />
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Bio section with AI */}
-      <section className="form-section">
+      {/* Bio with AI */}
+      <div className="form-section">
         <h3>Bio</h3>
-        <div>
+        <div style={{ marginBottom: '1rem' }}>
           <label className="form-label">Your Raw Bio</label>
           <textarea
             className="form-input form-textarea"
@@ -228,17 +215,12 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
             type="button"
             onClick={handleEnhanceBio}
             disabled={enhancing || !form.bio_raw.trim()}
-            style={{
-              marginTop: 10, padding: '9px 18px', borderRadius: 8, border: 'none',
-              background: (enhancing || !form.bio_raw.trim()) ? 'var(--muted)' : 'var(--accent)',
-              color: '#fff', fontWeight: 600, fontSize: '0.85rem',
-              cursor: (enhancing || !form.bio_raw.trim()) ? 'not-allowed' : 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-            }}
+            className="button-primary"
+            style={{ marginTop: '0.75rem', fontSize: '0.84rem', opacity: (enhancing || !form.bio_raw.trim()) ? 0.6 : 1, cursor: (enhancing || !form.bio_raw.trim()) ? 'not-allowed' : 'pointer' }}
           >
             {enhancing ? '✨ Enhancing…' : '✨ Enhance with AI'}
           </button>
-          {enhanceError && <p className="form-error" style={{ marginTop: 8 }}>{enhanceError}</p>}
+          {enhanceError && <p className="form-error" style={{ marginTop: '0.5rem' }}>{enhanceError}</p>}
         </div>
 
         {aiSuggestion && (
@@ -246,25 +228,17 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
             <p className="ai-suggestion__title">✨ AI-Generated Bio</p>
             <p className="ai-suggestion__bio">{aiSuggestion.bio}</p>
             <div className="ai-suggestion__actions">
-              <button
-                type="button"
-                onClick={acceptAiSuggestion}
-                style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: '#15803d', color: '#fff', fontWeight: 600, fontSize: '0.83rem', cursor: 'pointer' }}
-              >
+              <button type="button" onClick={acceptAiSuggestion} className="button-primary" style={{ fontSize: '0.82rem' }}>
                 Accept
               </button>
-              <button
-                type="button"
-                onClick={() => setAiSuggestion(null)}
-                style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #bbf7d0', background: 'transparent', fontWeight: 600, fontSize: '0.83rem', cursor: 'pointer' }}
-              >
+              <button type="button" onClick={() => setAiSuggestion(null)} className="button-secondary" style={{ fontSize: '0.82rem' }}>
                 Dismiss
               </button>
             </div>
           </div>
         )}
 
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: '1rem' }}>
           <label className="form-label">Enhanced Bio (public-facing)</label>
           <textarea
             className="form-input form-textarea"
@@ -274,10 +248,10 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
             placeholder="Your polished public bio will appear here after AI enhancement..."
           />
         </div>
-      </section>
+      </div>
 
       {/* Specializations */}
-      <section className="form-section">
+      <div className="form-section">
         <h3>Specializations</h3>
         <label className="form-label">Tags (comma-separated)</label>
         <input
@@ -287,10 +261,10 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
           placeholder="e.g. executive coaching, healthcare, government, change management"
         />
         <p className="form-hint">These are used for semantic search matching.</p>
-      </section>
+      </div>
 
-      {/* Public profile links */}
-      <section className="form-section">
+      {/* Links */}
+      <div className="form-section">
         <h3>Public Profile Links</h3>
         <div className="form-grid-2">
           <div>
@@ -302,25 +276,25 @@ export default function CoachProfileEditor({ coach }: CoachProfileEditorProps) {
             <input className="form-input" type="url" value={form.website_url} onChange={(e) => update('website_url', e.target.value)} placeholder="https://..." />
           </div>
         </div>
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: '1rem' }}>
           <label className="form-label">Signature Approach / Highlight</label>
           <textarea
             className="form-input form-textarea"
             style={{ minHeight: 80 }}
             value={form.highlight}
             onChange={(e) => update('highlight', e.target.value)}
-            placeholder="Describe your unique methodology or approach in 1-2 sentences..."
+            placeholder="Describe your unique methodology in 1-2 sentences..."
           />
         </div>
-      </section>
+      </div>
 
-      {/* Save button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1.5rem' }}>
+      {/* Save */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
         <button
           type="submit"
           disabled={saving}
           className="button-primary"
-          style={{ opacity: saving ? 0.65 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}
+          style={{ opacity: saving ? 0.6 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}
         >
           {saving ? 'Saving…' : 'Save Profile'}
         </button>

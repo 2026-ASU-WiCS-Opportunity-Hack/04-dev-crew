@@ -1,0 +1,43 @@
+import { NextResponse } from 'next/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+
+interface Params { params: { id: string } }
+
+// GET /api/jobs/[id]/applications — all applicants for a listing
+export async function GET(_req: Request, { params }: Params) {
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from('job_applications')
+      .select('*, coach:coaches(id, full_name, certification_level, location_country, contact_email)')
+      .eq('listing_id', params.id)
+      .order('created_at');
+
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true, data });
+  } catch (err: any) {
+    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+  }
+}
+
+// PATCH /api/jobs/[id]/applications — update application status
+export async function PATCH(request: Request, { params }: Params) {
+  try {
+    const { application_id, status } = await request.json();
+    if (!application_id || !status) return NextResponse.json({ ok: false, error: 'application_id and status are required.' }, { status: 400 });
+
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from('job_applications')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', application_id)
+      .eq('listing_id', params.id)
+      .select()
+      .single();
+
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true, data });
+  } catch (err: any) {
+    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+  }
+}

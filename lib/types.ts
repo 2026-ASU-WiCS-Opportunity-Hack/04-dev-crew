@@ -84,6 +84,15 @@ export interface CoachRecord {
   updated_at?: string;
 }
 
+export interface EventRsvpRecord {
+  id: string;
+  event_id: string;
+  coach_id: string;
+  created_at: string;
+  // joined fields
+  coach?: Pick<CoachRecord, 'id' | 'full_name' | 'certification_level' | 'location_country'>;
+}
+
 export interface EventRecord {
   id: string;
   chapter_id: string | null;
@@ -210,6 +219,49 @@ export interface CheckoutRequestBody {
   paymentType: PaymentType;
   studentCount: number;
   dueDate?: string;
+}
+
+// ─── Job Board ────────────────────────────────────────────────────────────────
+
+export type JobEngagementType = 'full_time' | 'part_time' | 'contract' | 'project';
+
+export type JobApplicationStatus =
+  | 'pending'
+  | 'reviewed'
+  | 'shortlisted'
+  | 'declined'
+  | 'hired';
+
+export interface JobListingRecord {
+  id: string;
+  chapter_id: string | null;
+  organization: string;
+  title: string;
+  description: string;
+  engagement_type: JobEngagementType;
+  location: string | null;
+  is_remote: boolean;
+  compensation: string | null;
+  requirements: string | null;
+  apply_deadline: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // joined
+  chapter?: Pick<ChapterRecord, 'id' | 'name' | 'country'>;
+}
+
+export interface JobApplicationRecord {
+  id: string;
+  listing_id: string;
+  coach_id: string;
+  cover_note: string | null;
+  status: JobApplicationStatus;
+  created_at: string;
+  updated_at: string;
+  // joined
+  listing?: Pick<JobListingRecord, 'id' | 'title' | 'organization' | 'engagement_type' | 'location' | 'is_remote'>;
+  coach?: Pick<CoachRecord, 'id' | 'full_name' | 'certification_level' | 'location_country' | 'contact_email'>;
 }
 
 export interface ApiSuccess<T> {

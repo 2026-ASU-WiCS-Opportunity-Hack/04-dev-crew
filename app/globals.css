@@ -2929,6 +2929,76 @@ body:has(.dashboard-shell) .site-footer__meta a {
   line-height: 1.75;
 }
 
+/* ===================== MEMBERSHIP ===================== */
+.membership-status-badge {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.45rem 1.1rem; border-radius: 999px;
+  font-size: 0.82rem; font-weight: 700;
+}
+.membership-status-badge--active { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.membership-status-badge--needs_renewal { background: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
+.membership-status-badge--not_active { background: var(--brand-soft); color: var(--brand-dark); border: 1px solid rgba(209,15,73,0.2); }
+
+.payment-method-grid { display: grid; gap: 1rem; margin-top: 1rem; }
+.payment-method-card {
+  padding: 1.1rem 1.25rem; border-radius: 0.85rem;
+  border: 2px solid var(--border); background: rgba(255,255,255,0.7);
+  cursor: pointer; transition: border-color 160ms, background 160ms;
+  display: flex; align-items: center; gap: 0.85rem;
+}
+.payment-method-card:hover { border-color: var(--accent); background: var(--accent-soft); }
+.payment-method-card--selected { border-color: var(--accent); background: var(--accent-soft); }
+.payment-method-card__icon { font-size: 1.6rem; flex-shrink: 0; }
+.payment-method-card__label { font-weight: 700; font-size: 0.9rem; margin: 0 0 0.1rem; }
+.payment-method-card__sub { font-size: 0.76rem; color: var(--muted); margin: 0; }
+
+/* ===================== RECERTIFICATION ===================== */
+.recert-checklist { display: flex; flex-direction: column; gap: 0.75rem; }
+.recert-requirement {
+  display: flex; align-items: center; gap: 0.85rem;
+  padding: 0.9rem 1.1rem; border-radius: 0.85rem;
+  border: 1px solid var(--border); background: rgba(37,56,74,0.02);
+  transition: border-color 160ms;
+}
+.recert-requirement--met { border-color: #bbf7d0; background: #f0fdf4; }
+.recert-requirement--pending { border-color: #fef08a; background: #fefce8; }
+.recert-requirement__icon { font-size: 1.15rem; flex-shrink: 0; }
+.recert-requirement__label { font-weight: 600; font-size: 0.88rem; margin: 0 0 0.15rem; }
+.recert-requirement__sub { font-size: 0.78rem; color: var(--muted); margin: 0; }
+
+/* ===================== DASHBOARD EVENTS ===================== */
+.dash-event-item {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: 1rem 1.35rem; border-bottom: 1px solid var(--border);
+}
+.dash-event-item:last-child { border-bottom: none; }
+.dash-event-date {
+  min-width: 46px; text-align: center; padding: 0.4rem 0.5rem;
+  background: var(--brand-soft); border-radius: 0.65rem;
+  color: var(--brand-dark); flex-shrink: 0;
+}
+.dash-event-date__day { font-size: 1.3rem; font-weight: 800; line-height: 1; display: block; }
+.dash-event-date__month { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-top: 0.1rem; }
+.dash-event-info { flex: 1; min-width: 0; }
+.dash-event-info__title { font-weight: 700; font-size: 0.9rem; margin: 0 0 0.25rem; }
+.dash-event-info__meta { font-size: 0.78rem; color: var(--muted); margin: 0; }
+.dash-event-global { font-size: 0.68rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 0.1rem 0.5rem; margin-left: 0.4rem; }
+
+/* ===================== RESOURCE LINKS ===================== */
+.resource-link-grid { display: grid; gap: 0.75rem; }
+.resource-link-card {
+  display: flex; align-items: center; gap: 0.85rem;
+  padding: 1rem 1.1rem; border-radius: 0.85rem;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.7);
+  text-decoration: none; color: inherit;
+  transition: border-color 160ms, background 160ms, transform 160ms;
+}
+.resource-link-card:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-2px); }
+.resource-link-card__icon { font-size: 1.4rem; flex-shrink: 0; }
+.resource-link-card__label { font-weight: 700; font-size: 0.9rem; margin: 0 0 0.1rem; }
+.resource-link-card__sub { font-size: 0.76rem; color: var(--muted); margin: 0; }
+.resource-link-card__arrow { margin-left: auto; color: var(--muted); font-size: 0.9rem; }
+
 /* ===================== RESPONSIVE ===================== */
 @media (min-width: 640px) {
   .coach-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
