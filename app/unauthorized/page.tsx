@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { LogoutButton } from "@/components/auth/LogoutButton";
+
 type UnauthorizedPageProps = {
   searchParams?: {
     reason?: string;
@@ -67,6 +69,7 @@ export default function UnauthorizedPage({
           <Link href="/dashboard/chapter" className="button-secondary">
             Go to Dashboard
           </Link>
+          <LogoutButton className="button-secondary" />
         </div>
       </section>
     </main>
