@@ -1,6 +1,7 @@
 "use client";
 
-import type { GeneratedChapterContent, ChapterRecord, CoachRecord, EventRecord } from "@/lib/types";
+import { normalizeChapterContent } from "@/lib/chapter-content";
+import type { ChapterContentSection, ChapterRecord, CoachRecord, EventRecord } from "@/lib/types";
 
 interface ChapterPageProps {
   chapter: ChapterRecord;
@@ -10,7 +11,166 @@ interface ChapterPageProps {
 }
 
 export function ChapterPage({ chapter, coaches, events, testimonials }: ChapterPageProps) {
-  const content = chapter.content_json as GeneratedChapterContent | null;
+  const content = normalizeChapterContent(chapter);
+  const localNavItems = content.local_nav_json ?? [];
+
+  function renderSection(section: ChapterContentSection) {
+    if (section.type === "about") {
+      return (
+        <section className="section" id={section.id} key={section.id}>
+          <div className="container">
+            <h2 className="section-title">{section.title}</h2>
+            <p className="section-copy">{section.body || content.about_section}</p>
+          </div>
+        </section>
+      );
+    }
+
+    if (section.type === "why_action_learning") {
+      const items = section.items?.length ? section.items : content.why_action_learning;
+      if (items.length === 0) return null;
+      return (
+        <section className="section" id={section.id} key={section.id}>
+          <div className="container">
+            <h2 className="section-title">{section.title}</h2>
+            <ul className="hero-points" style={{ marginTop: "1.25rem" }}>
+              {items.map((point, i) => (
+                <li key={`${section.id}-${i}`} style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
+                  <span
+                    style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      width: "1.5rem", height: "1.5rem", borderRadius: "50%",
+                      background: "var(--brand)", color: "#fff", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0, marginTop: "0.15rem",
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span style={{ color: "var(--foreground)" }}>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      );
+    }
+
+    if (section.type === "coaches") {
+      if (coaches.length === 0) return null;
+      return (
+        <section className="section" id={section.id} key={section.id}>
+          <div className="container">
+            <h2 className="section-title">{section.title}</h2>
+            {section.body ? <p className="section-copy">{section.body}</p> : null}
+            <div className="card-grid" style={{ marginTop: "1.25rem" }}>
+              {coaches.map((coach) => (
+                <div key={coach.id} className="feature-card">
+                  <p style={{ fontWeight: 600, color: "var(--foreground)" }}>{coach.full_name}</p>
+                  <p style={{ fontSize: "0.9rem", color: "var(--brand)" }}>{coach.certification_level}</p>
+                  {coach.location_city && (
+                    <p style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+                      {coach.location_city}, {coach.location_country}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    if (section.type === "events") {
+      if (events.length === 0) return null;
+      return (
+        <section className="section" id={section.id} key={section.id}>
+          <div className="container">
+            <h2 className="section-title">{section.title}</h2>
+            {section.body ? <p className="section-copy">{section.body}</p> : null}
+            <div style={{ display: "grid", gap: "1rem", marginTop: "1.25rem" }}>
+              {events.map((event) => (
+                <div key={event.id} className="feature-card">
+                  <p style={{ fontWeight: 600, color: "var(--foreground)" }}>{event.title}</p>
+                  {event.event_date && (
+                    <p style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+                      {new Date(event.event_date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                    </p>
+                  )}
+                  {event.location && (
+                    <p style={{ fontSize: "0.9rem", color: "var(--muted)" }}>{event.location}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    if (section.type === "testimonials") {
+      if (testimonials.length === 0) return null;
+      return (
+        <section className="section" id={section.id} key={section.id}>
+          <div className="container">
+            <h2 className="section-title">{section.title}</h2>
+            {section.body ? <p className="section-copy">{section.body}</p> : null}
+            <div style={{ display: "grid", gap: "1.25rem", marginTop: "1.25rem" }}>
+              {testimonials.map((t, i) => (
+                <blockquote
+                  key={`${section.id}-${i}`}
+                  className="feature-card"
+                  style={{ borderLeft: "4px solid var(--brand)", fontStyle: "italic" }}
+                >
+                  <p style={{ color: "var(--foreground)" }}>&ldquo;{t.quote_text}&rdquo;</p>
+                  <footer style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--muted)", fontStyle: "normal" }}>
+                    — {t.author_name}
+                    {t.author_title && `, ${t.author_title}`}
+                    {t.organization && ` at ${t.organization}`}
+                  </footer>
+                </blockquote>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    if (section.type === "cta") {
+      return (
+        <section className="cta-shell" style={{ textAlign: "center" }} id={section.id} key={section.id}>
+          <div className="container">
+            <p className="section-title" style={{ fontSize: "1.25rem" }}>
+              {section.body || content.cta_text}
+            </p>
+            {chapter.contact_email && (
+              <a
+                href={`mailto:${chapter.contact_email}`}
+                className="button-primary"
+                style={{ marginTop: "1rem", display: "inline-block" }}
+              >
+                Contact Us
+              </a>
+            )}
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <section className="section" id={section.id} key={section.id}>
+        <div className="container">
+          <h2 className="section-title">{section.title}</h2>
+          {section.body ? <p className="section-copy">{section.body}</p> : null}
+          {section.items?.length ? (
+            <ul className="hero-points" style={{ marginTop: "1.25rem" }}>
+              {section.items.map((item, index) => (
+                <li key={`${section.id}-item-${index}`}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div>
@@ -37,138 +197,26 @@ export function ChapterPage({ chapter, coaches, events, testimonials }: ChapterP
         </div>
       </section>
 
+      {localNavItems.length > 0 ? (
+        <section className="section" style={{ paddingTop: "0.75rem", paddingBottom: "0.75rem" }}>
+          <div className="container" style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+            {localNavItems.map((item) => (
+              <a
+                key={`${item.href}-${item.label}`}
+                href={item.href}
+                className="button-secondary"
+                style={{ fontSize: "0.85rem" }}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <div className="page-divider" />
 
-      {/* About */}
-      {content?.about_section && (
-        <section className="section">
-          <div className="container">
-            <h2 className="section-title">About</h2>
-            <p className="section-copy">{content.about_section}</p>
-          </div>
-        </section>
-      )}
-
-      {/* Why Action Learning */}
-      {content?.why_action_learning && content.why_action_learning.length > 0 && (
-        <section className="section">
-          <div className="container">
-            <h2 className="section-title">Why Action Learning?</h2>
-            <ul className="hero-points" style={{ marginTop: "1.25rem" }}>
-              {content.why_action_learning.map((point, i) => (
-                <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
-                  <span
-                    style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: "1.5rem", height: "1.5rem", borderRadius: "50%",
-                      background: "var(--brand)", color: "#fff", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0, marginTop: "0.15rem",
-                    }}
-                  >
-                    {i + 1}
-                  </span>
-                  <span style={{ color: "var(--foreground)" }}>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      {/* Coaches */}
-      {coaches.length > 0 && (
-        <section className="section">
-          <div className="container">
-            <h2 className="section-title">
-              {content?.coaches_intro ?? "Our Coaches"}
-            </h2>
-            <div className="card-grid" style={{ marginTop: "1.25rem" }}>
-              {coaches.map((coach) => (
-                <div key={coach.id} className="feature-card">
-                  <p style={{ fontWeight: 600, color: "var(--foreground)" }}>{coach.full_name}</p>
-                  <p style={{ fontSize: "0.9rem", color: "var(--brand)" }}>{coach.certification_level}</p>
-                  {coach.location_city && (
-                    <p style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
-                      {coach.location_city}, {coach.location_country}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Events */}
-      {events.length > 0 && (
-        <section className="section">
-          <div className="container">
-            <h2 className="section-title">
-              {content?.event_highlight ? "Upcoming Events" : "Events"}
-            </h2>
-            {content?.event_highlight && (
-              <p className="section-copy">{content.event_highlight}</p>
-            )}
-            <div style={{ display: "grid", gap: "1rem", marginTop: "1.25rem" }}>
-              {events.map((event) => (
-                <div key={event.id} className="feature-card">
-                  <p style={{ fontWeight: 600, color: "var(--foreground)" }}>{event.title}</p>
-                  {event.event_date && (
-                    <p style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
-                      {new Date(event.event_date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
-                    </p>
-                  )}
-                  {event.location && (
-                    <p style={{ fontSize: "0.9rem", color: "var(--muted)" }}>{event.location}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Testimonials */}
-      {testimonials.length > 0 && (
-        <section className="section">
-          <div className="container">
-            <h2 className="section-title">Testimonials</h2>
-            <div style={{ display: "grid", gap: "1.25rem", marginTop: "1.25rem" }}>
-              {testimonials.map((t, i) => (
-                <blockquote
-                  key={i}
-                  className="feature-card"
-                  style={{ borderLeft: "4px solid var(--brand)", fontStyle: "italic" }}
-                >
-                  <p style={{ color: "var(--foreground)" }}>&ldquo;{t.quote_text}&rdquo;</p>
-                  <footer style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--muted)", fontStyle: "normal" }}>
-                    — {t.author_name}
-                    {t.author_title && `, ${t.author_title}`}
-                    {t.organization && ` at ${t.organization}`}
-                  </footer>
-                </blockquote>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* CTA */}
-      {content?.cta_text && (
-        <section className="cta-shell" style={{ textAlign: "center" }}>
-          <div className="container">
-            <p className="section-title" style={{ fontSize: "1.25rem" }}>{content.cta_text}</p>
-            {chapter.contact_email && (
-              <a
-                href={`mailto:${chapter.contact_email}`}
-                className="button-primary"
-                style={{ marginTop: "1rem", display: "inline-block" }}
-              >
-                Contact Us
-              </a>
-            )}
-          </div>
-        </section>
-      )}
+      {content.sections?.map((section) => renderSection(section))}
     </div>
   );
 }
