@@ -1,66 +1,338 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ChapterPreview } from "@/components/chapter/ChapterPreview";
 import { useChapterDashboardContext } from "@/components/providers/ChapterDashboardProvider";
-import { getDefaultChapterContent, normalizeChapterContent } from "@/lib/chapter-content";
+import { normalizeChapterContent } from "@/lib/chapter-content";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type {
   ChapterContentSection,
   ChapterRecord,
+  ChapterSectionType,
+  ChapterWebsitePage,
   GeneratedChapterContent,
   ChapterGenerationInput,
 } from "@/lib/types";
+import { slugify } from "@/lib/utils";
 
-function navItemsToText(
-  value: GeneratedChapterContent["local_nav_json"] = [],
-) {
-  return value.map((item) => `${item.label}|${item.href}`).join("\n");
+function createId(prefix: string) {
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function parseNavText(value: string) {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [label, href] = line.split("|").map((part) => part?.trim());
-      return label && href ? { label, href } : null;
-    })
-    .filter(
-      (item): item is { label: string; href: string } => Boolean(item),
-    );
-}
-
-function moveSection(
-  sections: ChapterContentSection[],
-  index: number,
-  direction: -1 | 1,
-) {
+function moveItem<T>(items: T[], index: number, direction: -1 | 1) {
   const nextIndex = index + direction;
-  if (nextIndex < 0 || nextIndex >= sections.length) {
-    return sections;
+  if (nextIndex < 0 || nextIndex >= items.length) {
+    return items;
   }
 
-  const nextSections = [...sections];
-  const [current] = nextSections.splice(index, 1);
-  nextSections.splice(nextIndex, 0, current);
-  return nextSections;
+  const next = [...items];
+  const [current] = next.splice(index, 1);
+  next.splice(nextIndex, 0, current);
+  return next;
 }
 
-const EMPTY_CHAPTER_CONTENT: GeneratedChapterContent = {
-  hero_headline: "",
-  hero_subheadline: "",
-  about_section: "",
-  why_action_learning: ["", "", ""],
-  coaches_intro: "",
-  event_highlight: "",
-  testimonial_formatted: "",
-  cta_text: "",
-  meta_description: "",
-};
+function isValidActionUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return true;
+  }
+
+  if (trimmed.startsWith("/") || trimmed.startsWith("#")) {
+    return true;
+  }
+
+  if (/^(mailto:|tel:)/i.test(trimmed)) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function buildUniquePageSlug(
+  pages: ChapterWebsitePage[],
+  name: string,
+  currentPageId?: string,
+  isHome?: boolean,
+) {
+  if (isHome) {
+    return "";
+  }
+
+  const base = slugify(name) || "page";
+  const used = new Set(
+    pages
+      .filter((page) => page.id !== currentPageId && !page.is_home)
+      .map((page) => page.slug),
+  );
+  let candidate = base;
+  let counter = 2;
+
+  while (used.has(candidate)) {
+    candidate = `${base}-${counter}`;
+    counter += 1;
+  }
+
+  return candidate;
+}
+
+function createSection(type: ChapterSectionType): ChapterContentSection {
+  if (type === "hero") {
+    return {
+      id: createId("hero"),
+      type,
+      content: {
+        title: "New hero title",
+        subtitle: "Add a strong supporting message for this page.",
+        background_image_url: "",
+        action: { text: "Learn more", url: "" },
+      },
+    };
+  }
+
+  if (type === "about") {
+    return {
+      id: createId("about"),
+      type,
+      content: {
+        title: "About this page",
+        paragraph: "Add a concise explanation for this section.",
+      },
+    };
+  }
+
+  if (type === "features") {
+    return {
+      id: createId("features"),
+      type,
+      content: {
+        title: "Highlights",
+        cards: [
+          {
+            id: createId("feature"),
+            title: "Feature title",
+            description: "Describe the value of this feature or service.",
+            icon: "✦",
+          },
+        ],
+      },
+    };
+  }
+
+  if (type === "events") {
+    return {
+      id: createId("events"),
+      type,
+      content: {
+        title: "Events",
+        items: [
+          {
+            id: createId("event"),
+            title: "Event title",
+            date: "",
+            description: "Add the event details here.",
+            action: { text: "Register", url: "" },
+          },
+        ],
+      },
+    };
+  }
+
+  if (type === "testimonials") {
+    return {
+      id: createId("testimonials"),
+      type,
+      content: {
+        title: "Testimonials",
+        items: [
+          {
+            id: createId("testimonial"),
+            quote: "Share a strong quote from a participant or client.",
+            author: "Name",
+          },
+        ],
+      },
+    };
+  }
+
+  return {
+    id: createId("cta"),
+    type: "cta",
+    content: {
+      message: "Invite visitors to take the next step.",
+      action: { text: "Get in touch", url: "" },
+    },
+  };
+}
+
+function createPage(pages: ChapterWebsitePage[]): ChapterWebsitePage {
+  const name = `Page ${pages.length + 1}`;
+  return {
+    id: createId("page"),
+    name,
+    slug: buildUniquePageSlug(pages, name),
+    is_home: false,
+    show_in_nav: true,
+    nav_label: name,
+    sections: [createSection("hero"), createSection("about")],
+  };
+}
+
+function applyGeneratedContent(
+  current: GeneratedChapterContent,
+  generated: GeneratedChapterContent,
+): GeneratedChapterContent {
+  const pages = (current.pages ?? []).map((page, index) => {
+    if (!(page.is_home || index === 0)) {
+      return page;
+    }
+
+    const sections = page.sections.map((section) => {
+      if (section.type === "hero") {
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            title: generated.hero_headline || section.content.title,
+            subtitle: generated.hero_subheadline || section.content.subtitle,
+          },
+        };
+      }
+
+      if (section.type === "about") {
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            paragraph: generated.about_section || section.content.paragraph,
+          },
+        };
+      }
+
+      if (section.type === "features" && generated.why_action_learning.length > 0) {
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            cards: generated.why_action_learning.map((item, cardIndex) => ({
+              id: section.content.cards[cardIndex]?.id ?? createId("feature"),
+              title: section.content.cards[cardIndex]?.title ?? `Feature ${cardIndex + 1}`,
+              description: item,
+              icon: section.content.cards[cardIndex]?.icon ?? "",
+            })),
+          },
+        };
+      }
+
+      if (section.type === "events" && generated.event_highlight) {
+        const first = section.content.items[0];
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items: [
+              {
+                id: first?.id ?? createId("event"),
+                title: first?.title ?? "Featured Event",
+                date: first?.date ?? "",
+                description: generated.event_highlight,
+                action: first?.action ?? { text: "Register", url: "" },
+              },
+              ...section.content.items.slice(1),
+            ],
+          },
+        };
+      }
+
+      if (section.type === "testimonials" && generated.testimonial_formatted) {
+        const first = section.content.items[0];
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            items: [
+              {
+                id: first?.id ?? createId("testimonial"),
+                quote: generated.testimonial_formatted,
+                author: first?.author ?? "WIAL Community Member",
+              },
+              ...section.content.items.slice(1),
+            ],
+          },
+        };
+      }
+
+      if (section.type === "cta" && generated.cta_text) {
+        return {
+          ...section,
+          content: {
+            ...section.content,
+            message: generated.cta_text,
+          },
+        };
+      }
+
+      return section;
+    });
+
+    return {
+      ...page,
+      sections,
+    };
+  });
+
+  return {
+    ...current,
+    ...generated,
+    pages,
+    meta_description: generated.meta_description || current.meta_description,
+  };
+}
+
+function collectInvalidUrls(content: GeneratedChapterContent) {
+  const invalid: string[] = [];
+
+  for (const page of content.pages ?? []) {
+    for (const section of page.sections) {
+      if (section.type === "hero" || section.type === "cta") {
+        const action = section.content.action;
+        if (action?.url && !isValidActionUrl(action.url)) {
+          invalid.push(`${page.name}: ${section.type} button URL is invalid.`);
+        }
+      }
+
+      if (section.type === "events") {
+        section.content.items.forEach((item) => {
+          if (item.action?.url && !isValidActionUrl(item.action.url)) {
+            invalid.push(`${page.name}: event link for "${item.title || "Untitled event"}" is invalid.`);
+          }
+        });
+      }
+    }
+  }
+
+  return invalid;
+}
+
+function SectionTypeButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="button-secondary" onClick={onClick}>
+      Add {label}
+    </button>
+  );
+}
 
 export default function EditChapterPage() {
   const router = useRouter();
@@ -74,49 +346,98 @@ export default function EditChapterPage() {
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [testimonial, setTestimonial] = useState("");
-  const [preview, setPreview] = useState<GeneratedChapterContent | null>(null);
-  const [localNavText, setLocalNavText] = useState("");
-  const [sections, setSections] = useState<ChapterContentSection[]>([]);
+  const [draftContent, setDraftContent] = useState<GeneratedChapterContent | null>(null);
+  const [selectedPageId, setSelectedPageId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const { chapterId, orgRole } = useChapterDashboardContext();
-  const isContentCreator = orgRole === "content_creator";
+  const { chapterId } = useChapterDashboardContext();
 
   useEffect(() => {
     async function load() {
-      if (!chapterId) { setLoading(false); return; }
+      if (!chapterId) {
+        setLoading(false);
+        return;
+      }
 
       const supabase = createSupabaseBrowserClient();
-      const { data: ch } = await supabase
+      const { data } = await supabase
         .from("chapters")
         .select("*")
         .eq("id", chapterId)
         .single();
 
-      const chapterData = ch as ChapterRecord | null;
+      const chapterData = data as ChapterRecord | null;
       if (chapterData) {
+        const normalizedContent = normalizeChapterContent(chapterData);
         setChapter(chapterData);
         setName(chapterData.name);
         setContactName(chapterData.contact_name ?? "");
         setContactEmail(chapterData.contact_email ?? "");
         setExternalWebsite(chapterData.external_website ?? "");
         setLanguage(chapterData.language);
-        // Use normalizeChapterContent to get localNavText and sections as well
-        const normalizedContent = normalizeChapterContent(chapterData);
-        setPreview(normalizedContent);
-        setLocalNavText(navItemsToText(normalizedContent.local_nav_json));
-        setSections(normalizedContent.sections ?? []);
+        setDraftContent(normalizedContent);
+        setSelectedPageId(normalizedContent.pages?.[0]?.id ?? "");
       }
+
       setLoading(false);
     }
+
     load();
   }, [chapterId]);
 
+  const pages = draftContent?.pages ?? [];
+  const selectedPage =
+    pages.find((page) => page.id === selectedPageId) ?? pages[0] ?? null;
+  const selectedPageSlug = selectedPage?.is_home ? "" : selectedPage?.slug;
+  const invalidUrls = useMemo(
+    () => (draftContent ? collectInvalidUrls(draftContent) : []),
+    [draftContent],
+  );
+
+  function updateDraft(mutator: (current: GeneratedChapterContent) => GeneratedChapterContent) {
+    setDraftContent((current) => {
+      if (!current) {
+        return current;
+      }
+      return mutator(current);
+    });
+  }
+
+  function updateSelectedPage(
+    mutator: (page: ChapterWebsitePage, pages: ChapterWebsitePage[]) => ChapterWebsitePage,
+  ) {
+    updateDraft((current) => ({
+      ...current,
+      pages: (current.pages ?? []).map((page) =>
+        page.id === selectedPage?.id ? mutator(page, current.pages ?? []) : page,
+      ),
+    }));
+  }
+
+  function normalizeCurrentContent(content: GeneratedChapterContent) {
+    if (!chapter) {
+      return content;
+    }
+
+    return normalizeChapterContent({
+      ...chapter,
+      name,
+      contact_name: contactName || null,
+      contact_email: contactEmail || null,
+      external_website: externalWebsite || null,
+      language,
+      content_json: content,
+    });
+  }
+
   async function handleRegenerate() {
-    if (!chapter) return;
+    if (!chapter || !draftContent) {
+      return;
+    }
+
     setGenerating(true);
     setError(null);
     try {
@@ -125,7 +446,7 @@ export default function EditChapterPage() {
         country: chapter.country,
         language,
         contactName: contactName || undefined,
-        coachNames: coachNames ? coachNames.split(",").map((n) => n.trim()) : undefined,
+        coachNames: coachNames ? coachNames.split(",").map((item) => item.trim()) : undefined,
         eventTitle: eventTitle || undefined,
         eventDate: eventDate || undefined,
         testimonial: testimonial || undefined,
@@ -136,23 +457,16 @@ export default function EditChapterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
+
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error ?? "Generation failed");
       }
+
       const data = await res.json();
-      // Merge generated content with current localNavText and sections
-      const nextContent = {
-        ...getDefaultChapterContent({
-          ...chapter,
-          name,
-          language,
-        }),
-        ...(data.data?.content ?? data.content),
-        local_nav_json: parseNavText(localNavText),
-        sections,
-      } as GeneratedChapterContent;
-      setPreview(nextContent);
+      const generated = data.data?.content ?? data.content;
+      const next = normalizeCurrentContent(applyGeneratedContent(draftContent, generated));
+      setDraftContent(next);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Generation failed");
     } finally {
@@ -161,29 +475,20 @@ export default function EditChapterPage() {
   }
 
   async function handleSave() {
-    if (!chapter) return;
+    if (!chapter || !draftContent) {
+      return;
+    }
+
+    if (invalidUrls.length > 0) {
+      setError(invalidUrls[0]);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccess(false);
     try {
-      // Build a complete content object that includes local nav and page builder sections
-      const nextContent: GeneratedChapterContent = {
-        ...(preview ?? getDefaultChapterContent(chapter)),
-        hero_headline: preview?.hero_headline ?? name,
-        hero_subheadline:
-          preview?.hero_subheadline ??
-          `Discover Action Learning programs in ${chapter.country}.`,
-        about_section: preview?.about_section ?? "",
-        why_action_learning: preview?.why_action_learning ?? [],
-        coaches_intro: preview?.coaches_intro ?? "",
-        event_highlight: preview?.event_highlight ?? "",
-        testimonial_formatted: preview?.testimonial_formatted ?? "",
-        cta_text: preview?.cta_text ?? "",
-        meta_description: preview?.meta_description ?? "",
-        local_nav_json: parseNavText(localNavText),
-        sections,
-      };
-
+      const normalized = normalizeCurrentContent(draftContent);
       const response = await fetch("/api/chapters/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -194,35 +499,25 @@ export default function EditChapterPage() {
           contactEmail: contactEmail || null,
           externalWebsite: externalWebsite || null,
           language,
-          content: nextContent,
+          content: normalized,
         }),
       });
 
       const result = await response.json();
-
       if (!response.ok || !result.ok) {
         throw new Error(result.error ?? "Save failed");
       }
 
-      setPreview(nextContent);
-
-      if (!isContentCreator) {
-        setChapter({
-          ...chapter,
-          name,
-          contact_name: contactName || null,
-          contact_email: contactEmail || null,
-          external_website: externalWebsite || null,
-          language,
-          content_json: nextContent,
-        });
-      } else {
-        setChapter({
-          ...chapter,
-          content_json: nextContent,
-        });
-      }
-
+      setDraftContent(normalized);
+      setChapter({
+        ...chapter,
+        name,
+        contact_name: contactName || null,
+        contact_email: contactEmail || null,
+        external_website: externalWebsite || null,
+        language,
+        content_json: normalized,
+      });
       router.refresh();
       setSuccess(true);
     } catch (err: unknown) {
@@ -232,399 +527,443 @@ export default function EditChapterPage() {
     }
   }
 
-  if (loading) return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading...</p>;
-  if (!chapter) return <p style={{ color: "#dc2626", fontSize: "0.9rem" }}>No chapter assigned to your profile.</p>;
+  if (loading) {
+    return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading...</p>;
+  }
 
-  const content = preview ?? EMPTY_CHAPTER_CONTENT;
+  if (!chapter || !draftContent || !selectedPage) {
+    return <p style={{ color: "#dc2626", fontSize: "0.9rem" }}>No chapter assigned to your profile.</p>;
+  }
 
   return (
     <div>
       <div style={{ display: "grid", gap: "0.4rem", marginBottom: "1.5rem" }}>
         <h1 className="section-title">Edit {chapter.name}</h1>
         <p style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
-          {isContentCreator
-            ? "Update the approved content zones for your chapter page without changing structure or global branding."
-            : "Manage chapter details and update the public-facing content for your chapter page."}
+          Build multi-page chapter websites with reusable sections, locked global styling, and live preview.
         </p>
       </div>
 
       <div className="contact-form" style={{ padding: "1.5rem" }}>
-        {!isContentCreator && (
-          <>
-            <div className="card-grid">
-              <div className="contact-form__field-group">
-                <label className="contact-form__label">Chapter Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="contact-form__field"
-                />
-              </div>
-              <div className="contact-form__field-group">
-                <label className="contact-form__label">Language</label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="contact-form__field"
-                >
-                  <option value="en">English</option>
-                  <option value="es">Spanish</option>
-                  <option value="pt">Portuguese</option>
-                  <option value="fr">French</option>
-                </select>
-              </div>
-              <div className="contact-form__field-group">
-                <label className="contact-form__label">Contact Name</label>
-                <input
-                  type="text"
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  className="contact-form__field"
-                />
-              </div>
-              <div className="contact-form__field-group">
-                <label className="contact-form__label">Contact Email</label>
-                <input
-                  type="email"
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  className="contact-form__field"
-                />
-              </div>
-              <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
-                <label className="contact-form__label">External Website</label>
-                <input
-                  type="url"
-                  value={externalWebsite}
-                  onChange={(e) => setExternalWebsite(e.target.value)}
-                  className="contact-form__field"
-                />
-              </div>
-            </div>
-
-            <div className="page-divider" style={{ margin: "1.5rem 0" }} />
-          </>
-        )}
-
-        <div className="page-divider" style={{ margin: "1.5rem 0" }} />
-        <p className="eyebrow" style={{ marginBottom: "1rem" }}>Local Website Content</p>
         <div className="card-grid">
           <div className="contact-form__field-group">
-            <label className="contact-form__label">Hero Headline</label>
-            <input
-              type="text"
-              value={preview?.hero_headline ?? ""}
-              onChange={(e) =>
-                setPreview((current) => ({
-                  ...(current ?? getDefaultChapterContent(chapter)),
-                  hero_headline: e.target.value,
-                }))
-              }
-              className="contact-form__field"
-            />
+            <label className="contact-form__label">Chapter Name</label>
+            <input type="text" value={name} onChange={(event) => setName(event.target.value)} className="contact-form__field" />
           </div>
           <div className="contact-form__field-group">
-            <label className="contact-form__label">Hero Subheadline</label>
-            <input
-              type="text"
-              value={preview?.hero_subheadline ?? ""}
-              onChange={(e) =>
-                setPreview((current) => ({
-                  ...(current ?? getDefaultChapterContent(chapter)),
-                  hero_subheadline: e.target.value,
-                }))
-              }
-              className="contact-form__field"
-            />
+            <label className="contact-form__label">Language</label>
+            <select value={language} onChange={(event) => setLanguage(event.target.value)} className="contact-form__field">
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="pt">Portuguese</option>
+              <option value="fr">French</option>
+            </select>
+          </div>
+          <div className="contact-form__field-group">
+            <label className="contact-form__label">Contact Name</label>
+            <input type="text" value={contactName} onChange={(event) => setContactName(event.target.value)} className="contact-form__field" />
+          </div>
+          <div className="contact-form__field-group">
+            <label className="contact-form__label">Contact Email</label>
+            <input type="email" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} className="contact-form__field" />
           </div>
           <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
-            <label className="contact-form__label">Local Navigation Items</label>
-            <textarea
-              value={localNavText}
-              onChange={(e) => setLocalNavText(e.target.value)}
-              className="contact-form__field"
-              rows={4}
-              placeholder={"Overview|#about\nPrograms|#events\nTeam|#coaches"}
-            />
-            <p className="form-hint">One item per line using Label|Href. Global navigation stays managed by the global admin.</p>
+            <label className="contact-form__label">External Website</label>
+            <input type="url" value={externalWebsite} onChange={(event) => setExternalWebsite(event.target.value)} className="contact-form__field" />
           </div>
         </div>
 
-        {!isContentCreator && (
-          <>
-            <div className="page-divider" style={{ margin: "1.5rem 0" }} />
-            <p className="eyebrow" style={{ marginBottom: "1rem" }}>Page Builder</p>
-            <div style={{ display: "grid", gap: "1rem" }}>
-              {sections.map((section, index) => (
-                <div key={section.id} className="feature-card" style={{ display: "grid", gap: "0.85rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", alignItems: "center" }}>
-                    <strong>{section.title}</strong>
-                    <div className="stack-actions">
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => setSections((current) => moveSection(current, index, -1))}
-                      >
-                        Move Up
-                      </button>
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => setSections((current) => moveSection(current, index, 1))}
-                      >
-                        Move Down
-                      </button>
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() =>
-                          setSections((current) => current.filter((item) => item.id !== section.id))
-                        }
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
+        <div className="page-divider" style={{ margin: "1.5rem 0" }} />
 
-                  <div className="card-grid">
-                    <div className="contact-form__field-group">
-                      <label className="contact-form__label">Section Title</label>
-                      <input
-                        type="text"
-                        value={section.title}
-                        onChange={(e) =>
-                          setSections((current) =>
-                            current.map((item) =>
-                              item.id === section.id ? { ...item, title: e.target.value } : item,
-                            ),
-                          )
-                        }
-                        className="contact-form__field"
-                      />
-                    </div>
-                    <div className="contact-form__field-group">
-                      <label className="contact-form__label">Section Type</label>
-                      <input
-                        type="text"
-                        value={section.type}
-                        className="contact-form__field"
-                        disabled
-                      />
-                    </div>
-                    <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
-                      <label className="contact-form__label">Body</label>
-                      <textarea
-                        value={section.body ?? ""}
-                        onChange={(e) =>
-                          setSections((current) =>
-                            current.map((item) =>
-                              item.id === section.id ? { ...item, body: e.target.value } : item,
-                            ),
-                          )
-                        }
-                        className="contact-form__field"
-                        rows={4}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              <div className="stack-actions">
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={() =>
-                    setSections((current) => [
-                      ...current,
-                      {
-                        id: `custom-${Date.now()}`,
-                        type: "custom",
-                        title: "New Section",
-                        body: "",
-                      },
-                    ])
-                  }
-                >
-                  Add Custom Section
-                </button>
-              </div>
+        <div style={{ display: "grid", gap: "1rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+            <div>
+              <p className="eyebrow" style={{ marginBottom: "0.35rem" }}>Page Management</p>
+              <p style={{ color: "var(--muted)", fontSize: "0.9rem", margin: 0 }}>
+                Global navigation stays locked. Chapter menu items are generated from the pages below.
+              </p>
             </div>
-          </>
-        )}
+            <button
+              type="button"
+              className="button-primary"
+              onClick={() =>
+                updateDraft((current) => {
+                  const nextPage = createPage(current.pages ?? []);
+                  setSelectedPageId(nextPage.id);
+                  return {
+                    ...current,
+                    pages: [...(current.pages ?? []), nextPage],
+                  };
+                })
+              }
+            >
+              Add New Page
+            </button>
+          </div>
+
+          <div style={{ display: "grid", gap: "0.75rem" }}>
+            {pages.map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="feature-card"
+                onClick={() => setSelectedPageId(page.id)}
+                style={{
+                  textAlign: "left",
+                  border: page.id === selectedPage.id ? "2px solid var(--brand)" : "1px solid rgba(0,0,0,0.08)",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center" }}>
+                  <div>
+                    <strong>{page.name}</strong>
+                    <p style={{ margin: "0.35rem 0 0", color: "var(--muted)", fontSize: "0.88rem" }}>
+                      Route: {page.is_home ? `/${chapter.slug}` : `/${chapter.slug}/${page.slug}`}
+                    </p>
+                  </div>
+                  <span className="badge">{page.is_home ? "Home" : "Page"}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="page-divider" style={{ margin: "1.5rem 0" }} />
-        <p className="eyebrow" style={{ marginBottom: "1rem" }}>Regenerate AI Content (optional)</p>
+
+        <p className="eyebrow" style={{ marginBottom: "1rem" }}>Selected Page</p>
+        <div className="card-grid">
+          <div className="contact-form__field-group">
+            <label className="contact-form__label">Page Name</label>
+            <input
+              type="text"
+              value={selectedPage.name}
+              onChange={(event) =>
+                updateSelectedPage((page, allPages) => {
+                  const newName = event.target.value;
+                  const nextSlug = buildUniquePageSlug(allPages, newName, page.id, page.is_home);
+                  return {
+                    ...page,
+                    name: newName,
+                    slug: nextSlug,
+                    nav_label: !page.nav_label || page.nav_label === page.name ? newName : page.nav_label,
+                  };
+                })
+              }
+              className="contact-form__field"
+            />
+          </div>
+          <div className="contact-form__field-group">
+            <label className="contact-form__label">Generated Route</label>
+            <input
+              type="text"
+              value={selectedPage.is_home ? `/${chapter.slug}` : `/${chapter.slug}/${selectedPage.slug}`}
+              className="contact-form__field"
+              disabled
+            />
+          </div>
+          <div className="contact-form__field-group">
+            <label className="contact-form__label">Menu Label</label>
+            <input
+              type="text"
+              value={selectedPage.nav_label ?? ""}
+              onChange={(event) =>
+                updateSelectedPage((page) => ({
+                  ...page,
+                  nav_label: event.target.value,
+                }))
+              }
+              className="contact-form__field"
+            />
+          </div>
+          <div className="contact-form__field-group" style={{ alignSelf: "end" }}>
+            <label className="contact-form__label" style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+              <input
+                checked={Boolean(selectedPage.show_in_nav)}
+                onChange={(event) =>
+                  updateSelectedPage((page) => ({
+                    ...page,
+                    show_in_nav: event.target.checked,
+                  }))
+                }
+                type="checkbox"
+              />
+              Show in chapter menu
+            </label>
+          </div>
+        </div>
+
+        <div className="stack-actions" style={{ marginTop: "1rem" }}>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={pages.length <= 1}
+            onClick={() =>
+              updateDraft((current) => {
+                const remaining = (current.pages ?? []).filter((page) => page.id !== selectedPage.id);
+                const nextPages =
+                  remaining.length === 0
+                    ? current.pages ?? []
+                    : remaining.map((page, index) => ({
+                        ...page,
+                        is_home: index === 0 ? true : page.is_home && !selectedPage.is_home,
+                        slug: index === 0 ? "" : page.slug,
+                      }));
+                setSelectedPageId(nextPages[0]?.id ?? "");
+                return {
+                  ...current,
+                  pages: nextPages,
+                };
+              })
+            }
+            style={{ opacity: pages.length <= 1 ? 0.5 : 1 }}
+          >
+            Delete Page
+          </button>
+        </div>
+
+        <div className="page-divider" style={{ margin: "1.5rem 0" }} />
+
+        <div style={{ display: "grid", gap: "1rem" }}>
+          <div>
+            <p className="eyebrow" style={{ marginBottom: "0.35rem" }}>Section Builder</p>
+            <p style={{ color: "var(--muted)", fontSize: "0.9rem", margin: 0 }}>
+              Sections inherit the global template styling. Fonts, colors, and global navigation cannot be changed here.
+            </p>
+          </div>
+
+          <div className="stack-actions">
+            <SectionTypeButton label="Hero" onClick={() => updateSelectedPage((page) => ({ ...page, sections: [...page.sections, createSection("hero")] }))} />
+            <SectionTypeButton label="About" onClick={() => updateSelectedPage((page) => ({ ...page, sections: [...page.sections, createSection("about")] }))} />
+            <SectionTypeButton label="Features" onClick={() => updateSelectedPage((page) => ({ ...page, sections: [...page.sections, createSection("features")] }))} />
+            <SectionTypeButton label="Events" onClick={() => updateSelectedPage((page) => ({ ...page, sections: [...page.sections, createSection("events")] }))} />
+            <SectionTypeButton label="Testimonials" onClick={() => updateSelectedPage((page) => ({ ...page, sections: [...page.sections, createSection("testimonials")] }))} />
+            <SectionTypeButton label="CTA" onClick={() => updateSelectedPage((page) => ({ ...page, sections: [...page.sections, createSection("cta")] }))} />
+          </div>
+
+          <div style={{ display: "grid", gap: "1rem" }}>
+            {selectedPage.sections.map((section, sectionIndex) => (
+              <div key={section.id} className="feature-card" style={{ display: "grid", gap: "1rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                  <strong style={{ textTransform: "capitalize" }}>{section.type} section</strong>
+                  <div className="stack-actions">
+                    <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: moveItem(page.sections, sectionIndex, -1) }))}>Move Up</button>
+                    <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: moveItem(page.sections, sectionIndex, 1) }))}>Move Down</button>
+                    <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.filter((item) => item.id !== section.id) }))}>Remove</button>
+                  </div>
+                </div>
+
+                {section.type === "hero" ? (
+                  <div className="card-grid">
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Headline</label>
+                      <input type="text" value={section.content.title} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "hero" ? { ...item, content: { ...item.content, title: event.target.value } } : item) }))} className="contact-form__field" />
+                    </div>
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Subheading</label>
+                      <input type="text" value={section.content.subtitle} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "hero" ? { ...item, content: { ...item.content, subtitle: event.target.value } } : item) }))} className="contact-form__field" />
+                    </div>
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Banner / Background Image URL</label>
+                      <input type="url" value={section.content.background_image_url ?? ""} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "hero" ? { ...item, content: { ...item.content, background_image_url: event.target.value } } : item) }))} className="contact-form__field" />
+                    </div>
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Button Text</label>
+                      <input type="text" value={section.content.action?.text ?? ""} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "hero" ? { ...item, content: { ...item.content, action: { text: event.target.value, url: item.content.action?.url ?? "" } } } : item) }))} className="contact-form__field" />
+                    </div>
+                    <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
+                      <label className="contact-form__label">Button URL</label>
+                      <input type="url" value={section.content.action?.url ?? ""} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "hero" ? { ...item, content: { ...item.content, action: { text: item.content.action?.text ?? "", url: event.target.value } } } : item) }))} className="contact-form__field" />
+                      {section.content.action?.url && !isValidActionUrl(section.content.action.url) ? <p className="form-hint" style={{ color: "#dc2626" }}>Enter a valid URL, mailto link, phone link, root-relative path, or page anchor.</p> : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {section.type === "about" ? (
+                  <div className="card-grid">
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Title</label>
+                      <input type="text" value={section.content.title} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "about" ? { ...item, content: { ...item.content, title: event.target.value } } : item) }))} className="contact-form__field" />
+                    </div>
+                    <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
+                      <label className="contact-form__label">Paragraph</label>
+                      <textarea value={section.content.paragraph} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "about" ? { ...item, content: { ...item.content, paragraph: event.target.value } } : item) }))} className="contact-form__field" rows={5} />
+                    </div>
+                  </div>
+                ) : null}
+
+                {section.type === "features" ? (
+                  <div style={{ display: "grid", gap: "1rem" }}>
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Section Title</label>
+                      <input type="text" value={section.content.title} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "features" ? { ...item, content: { ...item.content, title: event.target.value } } : item) }))} className="contact-form__field" />
+                    </div>
+                    {section.content.cards.map((card, cardIndex) => (
+                      <div key={card.id} className="feature-card" style={{ display: "grid", gap: "0.75rem" }}>
+                        <div className="stack-actions">
+                          <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "features" ? { ...item, content: { ...item.content, cards: moveItem(item.content.cards, cardIndex, -1) } } : item) }))}>Move Up</button>
+                          <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "features" ? { ...item, content: { ...item.content, cards: moveItem(item.content.cards, cardIndex, 1) } } : item) }))}>Move Down</button>
+                          <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "features" ? { ...item, content: { ...item.content, cards: item.content.cards.filter((entry) => entry.id !== card.id) } } : item) }))}>Remove Card</button>
+                        </div>
+                        <div className="card-grid">
+                          <div className="contact-form__field-group">
+                            <label className="contact-form__label">Card Title</label>
+                            <input type="text" value={card.title} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "features" ? { ...item, content: { ...item.content, cards: item.content.cards.map((entry) => entry.id === card.id ? { ...entry, title: event.target.value } : entry) } } : item) }))} className="contact-form__field" />
+                          </div>
+                          <div className="contact-form__field-group">
+                            <label className="contact-form__label">Icon</label>
+                            <input type="text" value={card.icon ?? ""} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "features" ? { ...item, content: { ...item.content, cards: item.content.cards.map((entry) => entry.id === card.id ? { ...entry, icon: event.target.value } : entry) } } : item) }))} className="contact-form__field" placeholder="✦" />
+                          </div>
+                          <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
+                            <label className="contact-form__label">Description</label>
+                            <textarea value={card.description} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "features" ? { ...item, content: { ...item.content, cards: item.content.cards.map((entry) => entry.id === card.id ? { ...entry, description: event.target.value } : entry) } } : item) }))} className="contact-form__field" rows={3} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "features" ? { ...item, content: { ...item.content, cards: [...item.content.cards, { id: createId("feature"), title: "Feature title", description: "", icon: "" }] } } : item) }))}>Add Card</button>
+                  </div>
+                ) : null}
+
+                {section.type === "events" ? (
+                  <div style={{ display: "grid", gap: "1rem" }}>
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Section Title</label>
+                      <input type="text" value={section.content.title} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "events" ? { ...item, content: { ...item.content, title: event.target.value } } : item) }))} className="contact-form__field" />
+                    </div>
+                    {section.content.items.map((item, itemIndex) => (
+                      <div key={item.id} className="feature-card" style={{ display: "grid", gap: "0.75rem" }}>
+                        <div className="stack-actions">
+                          <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "events" ? { ...sectionItem, content: { ...sectionItem.content, items: moveItem(sectionItem.content.items, itemIndex, -1) } } : sectionItem) }))}>Move Up</button>
+                          <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "events" ? { ...sectionItem, content: { ...sectionItem.content, items: moveItem(sectionItem.content.items, itemIndex, 1) } } : sectionItem) }))}>Move Down</button>
+                          <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "events" ? { ...sectionItem, content: { ...sectionItem.content, items: sectionItem.content.items.filter((entry) => entry.id !== item.id) } } : sectionItem) }))}>Remove Event</button>
+                        </div>
+                        <div className="card-grid">
+                          <div className="contact-form__field-group">
+                            <label className="contact-form__label">Event Title</label>
+                            <input type="text" value={item.title} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "events" ? { ...sectionItem, content: { ...sectionItem.content, items: sectionItem.content.items.map((entry) => entry.id === item.id ? { ...entry, title: event.target.value } : entry) } } : sectionItem) }))} className="contact-form__field" />
+                          </div>
+                          <div className="contact-form__field-group">
+                            <label className="contact-form__label">Date</label>
+                            <input type="text" value={item.date ?? ""} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "events" ? { ...sectionItem, content: { ...sectionItem.content, items: sectionItem.content.items.map((entry) => entry.id === item.id ? { ...entry, date: event.target.value } : entry) } } : sectionItem) }))} className="contact-form__field" placeholder="April 10, 2026" />
+                          </div>
+                          <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
+                            <label className="contact-form__label">Description</label>
+                            <textarea value={item.description} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "events" ? { ...sectionItem, content: { ...sectionItem.content, items: sectionItem.content.items.map((entry) => entry.id === item.id ? { ...entry, description: event.target.value } : entry) } } : sectionItem) }))} className="contact-form__field" rows={3} />
+                          </div>
+                          <div className="contact-form__field-group">
+                            <label className="contact-form__label">Button Text</label>
+                            <input type="text" value={item.action?.text ?? ""} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "events" ? { ...sectionItem, content: { ...sectionItem.content, items: sectionItem.content.items.map((entry) => entry.id === item.id ? { ...entry, action: { text: event.target.value, url: entry.action?.url ?? "" } } : entry) } } : sectionItem) }))} className="contact-form__field" />
+                          </div>
+                          <div className="contact-form__field-group">
+                            <label className="contact-form__label">Button URL</label>
+                            <input type="url" value={item.action?.url ?? ""} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "events" ? { ...sectionItem, content: { ...sectionItem.content, items: sectionItem.content.items.map((entry) => entry.id === item.id ? { ...entry, action: { text: entry.action?.text ?? "", url: event.target.value } } : entry) } } : sectionItem) }))} className="contact-form__field" />
+                            {item.action?.url && !isValidActionUrl(item.action.url) ? <p className="form-hint" style={{ color: "#dc2626" }}>Enter a valid event link.</p> : null}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "events" ? { ...item, content: { ...item.content, items: [...item.content.items, { id: createId("event"), title: "Event title", date: "", description: "", action: { text: "Register", url: "" } }] } } : item) }))}>Add Event</button>
+                  </div>
+                ) : null}
+
+                {section.type === "testimonials" ? (
+                  <div style={{ display: "grid", gap: "1rem" }}>
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Section Title</label>
+                      <input type="text" value={section.content.title} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "testimonials" ? { ...item, content: { ...item.content, title: event.target.value } } : item) }))} className="contact-form__field" />
+                    </div>
+                    {section.content.items.map((item, itemIndex) => (
+                      <div key={item.id} className="feature-card" style={{ display: "grid", gap: "0.75rem" }}>
+                        <div className="stack-actions">
+                          <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "testimonials" ? { ...sectionItem, content: { ...sectionItem.content, items: moveItem(sectionItem.content.items, itemIndex, -1) } } : sectionItem) }))}>Move Up</button>
+                          <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "testimonials" ? { ...sectionItem, content: { ...sectionItem.content, items: moveItem(sectionItem.content.items, itemIndex, 1) } } : sectionItem) }))}>Move Down</button>
+                          <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "testimonials" ? { ...sectionItem, content: { ...sectionItem.content, items: sectionItem.content.items.filter((entry) => entry.id !== item.id) } } : sectionItem) }))}>Remove Quote</button>
+                        </div>
+                        <div className="card-grid">
+                          <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
+                            <label className="contact-form__label">Quote</label>
+                            <textarea value={item.quote} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "testimonials" ? { ...sectionItem, content: { ...sectionItem.content, items: sectionItem.content.items.map((entry) => entry.id === item.id ? { ...entry, quote: event.target.value } : entry) } } : sectionItem) }))} className="contact-form__field" rows={3} />
+                          </div>
+                          <div className="contact-form__field-group">
+                            <label className="contact-form__label">Author</label>
+                            <input type="text" value={item.author} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((sectionItem) => sectionItem.id === section.id && sectionItem.type === "testimonials" ? { ...sectionItem, content: { ...sectionItem.content, items: sectionItem.content.items.map((entry) => entry.id === item.id ? { ...entry, author: event.target.value } : entry) } } : sectionItem) }))} className="contact-form__field" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button type="button" className="button-secondary" onClick={() => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "testimonials" ? { ...item, content: { ...item.content, items: [...item.content.items, { id: createId("testimonial"), quote: "", author: "" }] } } : item) }))}>Add Quote</button>
+                  </div>
+                ) : null}
+
+                {section.type === "cta" ? (
+                  <div className="card-grid">
+                    <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
+                      <label className="contact-form__label">Message</label>
+                      <textarea value={section.content.message} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "cta" ? { ...item, content: { ...item.content, message: event.target.value } } : item) }))} className="contact-form__field" rows={3} />
+                    </div>
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Button Text</label>
+                      <input type="text" value={section.content.action?.text ?? ""} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "cta" ? { ...item, content: { ...item.content, action: { text: event.target.value, url: item.content.action?.url ?? "" } } } : item) }))} className="contact-form__field" />
+                    </div>
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Button URL</label>
+                      <input type="url" value={section.content.action?.url ?? ""} onChange={(event) => updateSelectedPage((page) => ({ ...page, sections: page.sections.map((item) => item.id === section.id && item.type === "cta" ? { ...item, content: { ...item.content, action: { text: item.content.action?.text ?? "", url: event.target.value } } } : item) }))} className="contact-form__field" />
+                      {section.content.action?.url && !isValidActionUrl(section.content.action.url) ? <p className="form-hint" style={{ color: "#dc2626" }}>Enter a valid URL for this CTA.</p> : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="page-divider" style={{ margin: "1.5rem 0" }} />
+
+        <p className="eyebrow" style={{ marginBottom: "1rem" }}>AI Content Refresh (optional)</p>
         <div className="card-grid">
           <div className="contact-form__field-group">
             <label className="contact-form__label">Coach Names</label>
-            <input
-              type="text"
-              value={coachNames}
-              onChange={(e) => setCoachNames(e.target.value)}
-              placeholder="Comma separated"
-              className="contact-form__field"
-            />
+            <input type="text" value={coachNames} onChange={(event) => setCoachNames(event.target.value)} placeholder="Comma separated" className="contact-form__field" />
           </div>
           <div className="contact-form__field-group">
             <label className="contact-form__label">Event Title</label>
-            <input
-              type="text"
-              value={eventTitle}
-              onChange={(e) => setEventTitle(e.target.value)}
-              className="contact-form__field"
-            />
+            <input type="text" value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} className="contact-form__field" />
           </div>
           <div className="contact-form__field-group">
             <label className="contact-form__label">Event Date</label>
-            <input
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              className="contact-form__field"
-            />
+            <input type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} className="contact-form__field" />
           </div>
           <div className="contact-form__field-group">
             <label className="contact-form__label">Testimonial</label>
-            <input
-              type="text"
-              value={testimonial}
-              onChange={(e) => setTestimonial(e.target.value)}
-              className="contact-form__field"
-            />
+            <input type="text" value={testimonial} onChange={(event) => setTestimonial(event.target.value)} className="contact-form__field" />
           </div>
         </div>
 
-        <div className="page-divider" style={{ margin: "1.5rem 0" }} />
-        <p className="eyebrow" style={{ marginBottom: "1rem" }}>Editable Content Zones</p>
-        <div className="contact-form__field-group">
-          <label className="contact-form__label">Hero Headline</label>
-          <input
-            type="text"
-            value={content.hero_headline}
-            onChange={(e) => setPreview({ ...content, hero_headline: e.target.value })}
-            className="contact-form__field"
-          />
-        </div>
-        <div className="contact-form__field-group">
-          <label className="contact-form__label">Hero Subheadline</label>
-          <textarea
-            value={content.hero_subheadline}
-            onChange={(e) => setPreview({ ...content, hero_subheadline: e.target.value })}
-            rows={3}
-            className="contact-form__field"
-          />
-        </div>
-        <div className="contact-form__field-group">
-          <label className="contact-form__label">About Section</label>
-          <textarea
-            value={content.about_section}
-            onChange={(e) => setPreview({ ...content, about_section: e.target.value })}
-            rows={5}
-            className="contact-form__field"
-          />
-        </div>
-        <div className="contact-form__field-group">
-          <label className="contact-form__label">Why Action Learning</label>
-          <textarea
-            value={content.why_action_learning.filter(Boolean).join("\n")}
-            onChange={(e) =>
-              setPreview({
-                ...content,
-                why_action_learning: e.target.value
-                  .split("\n")
-                  .map((item) => item.trim())
-                  .filter(Boolean),
-              })
-            }
-            rows={4}
-            placeholder="One point per line"
-            className="contact-form__field"
-          />
-        </div>
-        <div className="card-grid">
-          <div className="contact-form__field-group">
-            <label className="contact-form__label">Coaches Intro</label>
-            <textarea
-              value={content.coaches_intro}
-              onChange={(e) => setPreview({ ...content, coaches_intro: e.target.value })}
-              rows={4}
-              className="contact-form__field"
-            />
+        {invalidUrls.length > 0 ? (
+          <div style={{ marginTop: "1rem", display: "grid", gap: "0.35rem" }}>
+            {invalidUrls.map((message) => (
+              <p key={message} style={{ color: "#dc2626", fontSize: "0.88rem", margin: 0 }}>
+                {message}
+              </p>
+            ))}
           </div>
-          <div className="contact-form__field-group">
-            <label className="contact-form__label">Event Highlight</label>
-            <textarea
-              value={content.event_highlight}
-              onChange={(e) => setPreview({ ...content, event_highlight: e.target.value })}
-              rows={4}
-              className="contact-form__field"
-            />
-          </div>
-          <div className="contact-form__field-group">
-            <label className="contact-form__label">Testimonial Highlight</label>
-            <textarea
-              value={content.testimonial_formatted}
-              onChange={(e) => setPreview({ ...content, testimonial_formatted: e.target.value })}
-              rows={4}
-              className="contact-form__field"
-            />
-          </div>
-          <div className="contact-form__field-group">
-            <label className="contact-form__label">Call to Action</label>
-            <input
-              type="text"
-              value={content.cta_text}
-              onChange={(e) => setPreview({ ...content, cta_text: e.target.value })}
-              className="contact-form__field"
-            />
-          </div>
-          <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
-            <label className="contact-form__label">Meta Description</label>
-            <textarea
-              value={content.meta_description}
-              onChange={(e) => setPreview({ ...content, meta_description: e.target.value })}
-              rows={3}
-              className="contact-form__field"
-            />
-          </div>
-        </div>
+        ) : null}
 
-        {error && <p style={{ color: "#dc2626", fontSize: "0.9rem", marginTop: "1rem" }}>{error}</p>}
-        {success && <p style={{ color: "#16a34a", fontSize: "0.9rem", marginTop: "1rem" }}>Chapter updated successfully!</p>}
+        {error ? <p style={{ color: "#dc2626", fontSize: "0.9rem", marginTop: "1rem" }}>{error}</p> : null}
+        {success ? <p style={{ color: "#16a34a", fontSize: "0.9rem", marginTop: "1rem" }}>Chapter updated successfully!</p> : null}
 
         <div className="stack-actions" style={{ marginTop: "1.5rem" }}>
-          <button
-            type="button"
-            onClick={handleRegenerate}
-            disabled={generating}
-            className="button-secondary"
-            style={{ opacity: generating ? 0.5 : 1 }}
-          >
+          <button type="button" onClick={handleRegenerate} disabled={generating} className="button-secondary" style={{ opacity: generating ? 0.5 : 1 }}>
             {generating ? "Generating..." : "Regenerate AI Content"}
           </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="button-primary"
-            style={{ opacity: saving ? 0.5 : 1 }}
-          >
+          <button type="button" onClick={handleSave} disabled={saving} className="button-primary" style={{ opacity: saving ? 0.5 : 1 }}>
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
 
-        {preview && (
-          <ChapterPreview
-            content={{
-              ...preview,
-              local_nav_json: parseNavText(localNavText),
-              sections,
-            }}
-            chapterName={name}
-          />
-        )}
+        <div className="page-divider" style={{ margin: "1.5rem 0" }} />
+
+        <ChapterPreview content={draftContent} chapterName={name} activePageSlug={selectedPageSlug} />
       </div>
     </div>
   );

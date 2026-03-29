@@ -1,15 +1,20 @@
 "use client";
 
-import type { ChapterRecord } from "@/lib/types";
-import { getDefaultChapterContent } from "@/lib/chapter-content";
-import type { GeneratedChapterContent } from "@/lib/types";
+import { getPageBySlug, normalizeChapterContent } from "@/lib/chapter-content";
+import type { ChapterRecord, GeneratedChapterContent } from "@/lib/types";
+import { ChapterWebsiteRenderer } from "@/components/chapter/ChapterWebsiteRenderer";
 
 interface ChapterPreviewProps {
   content: GeneratedChapterContent;
   chapterName: string;
+  activePageSlug?: string;
 }
 
-export function ChapterPreview({ content, chapterName }: ChapterPreviewProps) {
+export function ChapterPreview({
+  content,
+  chapterName,
+  activePageSlug,
+}: ChapterPreviewProps) {
   const chapter = {
     id: "preview",
     name: chapterName,
@@ -24,64 +29,21 @@ export function ChapterPreview({ content, chapterName }: ChapterPreviewProps) {
     created_at: "",
     updated_at: "",
   } satisfies ChapterRecord;
-  const normalized = {
-    ...getDefaultChapterContent(chapter),
-    ...content,
-  };
+
+  const normalized = normalizeChapterContent(chapter);
+  const activePage = getPageBySlug(normalized, activePageSlug) ?? normalized.pages?.[0];
+
+  if (!activePage || !normalized.pages) {
+    return null;
+  }
 
   return (
-    <div className="feature-card">
-      <p className="eyebrow" style={{ marginBottom: "1rem" }}>
-        Preview — {chapterName}
-      </p>
-
-      <h2 className="section-title" style={{ fontSize: "1.6rem" }}>{normalized.hero_headline}</h2>
-      <p className="section-copy" style={{ marginTop: "0.5rem" }}>{normalized.hero_subheadline}</p>
-
-      <div className="page-divider" style={{ margin: "1.2rem 0" }} />
-
-      <strong>About</strong>
-      <p style={{ marginTop: "0.35rem", color: "var(--muted)", lineHeight: 1.7, fontSize: "0.95rem" }}>{normalized.about_section}</p>
-
-      {normalized.why_action_learning.length > 0 && (
-        <>
-          <strong style={{ display: "block", marginTop: "1rem" }}>Why Action Learning?</strong>
-          <ul className="list-clean">
-            {normalized.why_action_learning.map((p, i) => (
-              <li key={i}>{p}</li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {normalized.coaches_intro && (
-        <>
-          <strong style={{ display: "block", marginTop: "1rem" }}>Coaches</strong>
-          <p style={{ marginTop: "0.35rem", color: "var(--muted)", lineHeight: 1.7, fontSize: "0.95rem" }}>{normalized.coaches_intro}</p>
-        </>
-      )}
-
-      {normalized.event_highlight && (
-        <>
-          <strong style={{ display: "block", marginTop: "1rem" }}>Events</strong>
-          <p style={{ marginTop: "0.35rem", color: "var(--muted)", lineHeight: 1.7, fontSize: "0.95rem" }}>{normalized.event_highlight}</p>
-        </>
-      )}
-
-      {normalized.testimonial_formatted && (
-        <>
-          <strong style={{ display: "block", marginTop: "1rem" }}>Testimonial</strong>
-          <p style={{ marginTop: "0.35rem", color: "var(--muted)", fontStyle: "italic", lineHeight: 1.7, fontSize: "0.95rem" }}>
-            &ldquo;{normalized.testimonial_formatted}&rdquo;
-          </p>
-        </>
-      )}
-
-      {normalized.cta_text && (
-        <p style={{ marginTop: "1.2rem", textAlign: "center", fontWeight: 700, color: "var(--brand-dark)" }}>
-          {normalized.cta_text}
-        </p>
-      )}
-    </div>
+    <ChapterWebsiteRenderer
+      activePage={activePage}
+      chapterName={chapterName}
+      navItems={normalized.local_nav_json ?? []}
+      pages={normalized.pages}
+      preview
+    />
   );
 }

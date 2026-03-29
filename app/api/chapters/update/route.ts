@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
+import { normalizeChapterContent } from "@/lib/chapter-content";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getOptionalResendKey } from "@/lib/env";
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
 
     const { data: chapter, error: chapterError } = await admin
       .from("chapters")
-      .select("id, slug")
+      .select("id, slug, name, country, language, contact_name, contact_email, external_website, is_active, created_at, updated_at")
       .eq("id", body.chapterId)
       .maybeSingle();
 
@@ -104,6 +105,25 @@ export async function POST(request: Request) {
     }
 
     revalidatePath(`/${chapter.slug}`);
+    const normalizedContent = normalizeChapterContent({
+      id: body.chapterId,
+      name: body.name ?? chapter.name,
+      slug: chapter.slug,
+      country: chapter.country,
+      language: body.language ?? chapter.language,
+      contact_name: body.contactName ?? chapter.contact_name,
+      contact_email: body.contactEmail ?? chapter.contact_email,
+      external_website: body.externalWebsite ?? chapter.external_website,
+      content_json: body.content ?? null,
+      is_active: chapter.is_active,
+      created_at: chapter.created_at,
+      updated_at: chapter.updated_at,
+    });
+    normalizedContent.pages?.forEach((page) => {
+      if (!page.is_home && page.slug) {
+        revalidatePath(`/${chapter.slug}/${page.slug}`);
+      }
+    });
     revalidatePath(`/${chapter.slug}/coaches`);
     revalidatePath(`/${chapter.slug}/events`);
     revalidatePath("/events");

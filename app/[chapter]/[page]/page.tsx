@@ -1,22 +1,24 @@
 import { notFound } from "next/navigation";
-import { ChapterAccessDebug } from "@/components/debug/ChapterAccessDebug";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+
 import { ChapterPage } from "@/components/chapter/ChapterPage";
-import type { ChapterRecord } from "@/lib/types";
+import { ChapterAccessDebug } from "@/components/debug/ChapterAccessDebug";
+import { getPageBySlug, normalizeChapterContent } from "@/lib/chapter-content";
 import {
   getChapterAccessDebugInfo,
   getOptionalChapterAccessContext,
   requireChapterAccess,
 } from "@/lib/chapter-access";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { ChapterRecord } from "@/lib/types";
 
 export const revalidate = 3600;
 
 interface PageProps {
-  params: Promise<{ chapter: string }>;
+  params: Promise<{ chapter: string; page: string }>;
 }
 
-export default async function PublicChapterPage({ params }: PageProps) {
-  const { chapter: slug } = await params;
+export default async function PublicChapterSubPage({ params }: PageProps) {
+  const { chapter: slug, page: pageSlug } = await params;
 
   const accessContext = await getOptionalChapterAccessContext();
   let chapterAccess:
@@ -39,16 +41,23 @@ export default async function PublicChapterPage({ params }: PageProps) {
     .eq("is_active", true)
     .single();
 
-  if (!chapterData) notFound();
+  if (!chapterData) {
+    notFound();
+  }
 
   const chapter = chapterData as ChapterRecord;
+  const content = normalizeChapterContent(chapter);
+
+  if (!getPageBySlug(content, pageSlug)) {
+    notFound();
+  }
 
   return (
     <>
       <ChapterAccessDebug
         info={getChapterAccessDebugInfo(chapterAccess ?? accessContext)}
       />
-      <ChapterPage chapter={chapter} />
+      <ChapterPage chapter={chapter} pageSlug={pageSlug} />
     </>
   );
 }

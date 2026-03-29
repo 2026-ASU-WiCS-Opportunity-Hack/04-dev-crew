@@ -10,20 +10,119 @@ export type NavItem = {
   label: string;
 };
 export type ChapterSectionType =
+  | "hero"
   | "about"
-  | "why_action_learning"
-  | "coaches"
+  | "features"
   | "events"
   | "testimonials"
-  | "cta"
-  | "custom";
+  | "cta";
 
-export interface ChapterContentSection {
-  id: string;
-  type: ChapterSectionType;
+export interface ChapterSectionAction {
+  text: string;
+  url: string;
+}
+
+export interface HeroSectionContent {
   title: string;
-  body?: string | null;
-  items?: string[];
+  subtitle: string;
+  background_image_url?: string | null;
+  action?: ChapterSectionAction | null;
+}
+
+export interface AboutSectionContent {
+  title: string;
+  paragraph: string;
+}
+
+export interface FeatureCardContent {
+  id: string;
+  title: string;
+  description: string;
+  icon?: string | null;
+}
+
+export interface FeaturesSectionContent {
+  title: string;
+  cards: FeatureCardContent[];
+}
+
+export interface EventItemContent {
+  id: string;
+  title: string;
+  date?: string | null;
+  description: string;
+  action?: ChapterSectionAction | null;
+}
+
+export interface EventsSectionContent {
+  title: string;
+  items: EventItemContent[];
+}
+
+export interface TestimonialItemContent {
+  id: string;
+  quote: string;
+  author: string;
+}
+
+export interface TestimonialsSectionContent {
+  title: string;
+  items: TestimonialItemContent[];
+}
+
+export interface CtaSectionContent {
+  message: string;
+  action?: ChapterSectionAction | null;
+}
+
+export type ChapterSectionContent =
+  | HeroSectionContent
+  | AboutSectionContent
+  | FeaturesSectionContent
+  | EventsSectionContent
+  | TestimonialsSectionContent
+  | CtaSectionContent;
+
+export type ChapterContentSection =
+  | {
+      id: string;
+      type: "hero";
+      content: HeroSectionContent;
+    }
+  | {
+      id: string;
+      type: "about";
+      content: AboutSectionContent;
+    }
+  | {
+      id: string;
+      type: "features";
+      content: FeaturesSectionContent;
+    }
+  | {
+      id: string;
+      type: "events";
+      content: EventsSectionContent;
+    }
+  | {
+      id: string;
+      type: "testimonials";
+      content: TestimonialsSectionContent;
+    }
+  | {
+      id: string;
+      type: "cta";
+      content: CtaSectionContent;
+    };
+
+export interface ChapterWebsitePage {
+  id: string;
+  name: string;
+  slug: string;
+  is_home?: boolean;
+  show_in_nav?: boolean;
+  nav_label?: string;
+  sections: ChapterContentSection[];
 }
 
 export type CertificationLevel = "CALC" | "PALC" | "SALC" | "MALC";
@@ -181,6 +280,7 @@ export interface GeneratedChapterContent {
   meta_description: string;
   local_nav_json?: NavItem[];
   sections?: ChapterContentSection[];
+  pages?: ChapterWebsitePage[];
 }
 
 export interface SearchFilters {
