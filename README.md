@@ -61,11 +61,42 @@ A unified AI-native web platform where:
 
 ## Live Demo
 
-- **Deployed App:** _Coming soon_
-- **Demo Video:** _Coming soon_
-- **DevPost Project:** _Coming soon_
+- **Deployed App:** https://04-dev-crew.vercel.app/
+- **Demo Video:** (https://youtu.be/RqB59b2Kl5Q)
+- **DevPost Project:** https://devpost.com/software/wial-platform 
 
 ---
+## Screenshots
+
+### Homepage
+![Homepage](image.png)
+
+### Global Coach Directory
+![Coach Directory](image-1.png)
+
+### Chapter Dashboard
+ ![Chapter Dashboard](image-2.png)
+
+### Content Creator Dashboard
+![Content Creator Dashboard](image-3.png)
+
+### Coach Profile / Membership
+![Coach Dashboard](image-4.png)
+
+admin@wial.test
+admin123456
+
+Lead: 
+usa.lead@wial.test
+TestLead123
+
+coach: coach@example.com
+pass: coach@123
+
+Content Creator: siyasingh0in@gmail.com
+pass: 243006
+
+
 
 ## Getting Started
 
@@ -133,6 +164,12 @@ main    ← always deployable, source of truth
 - [ ] Your DevPost final submission demo video should be 4 minutes or less
 - [ ] Link your team to your DevPost project on ohack.dev in [your team dashboard](https://www.ohack.dev/hack/2026_spring_wics_asu/manageteam)
 - [ ] Link your GitHub repo to your DevPost project on the DevPost submission form under "Try it out" links
+
+### 2/GitHub
+- [ ] Add everyone on your team to your GitHub repo [YouTube Walkthrough](https://youtu.be/kHs0jOewVKI)
+- [ ] Make sure your repo is public
+- [ ] Make sure your repo has a MIT License
+- [ ] Make sure your repo has a detailed README.md (see below for details)
 
 ### 2/GitHub
 - [ ] Add everyone on your team to your GitHub repo [YouTube Walkthrough](https://youtu.be/kHs0jOewVKI)
