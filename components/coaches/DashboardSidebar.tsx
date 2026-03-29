@@ -10,6 +10,12 @@ const navItems = [
   { href: '/dashboard/coach/profile', label: '✏️ Edit Profile' },
   { href: '/dashboard/coach/sessions', label: '⏱ Session Logs' },
   { href: '/dashboard/coach/credits', label: '🎓 CE Credits' },
+  { href: '/dashboard/coach/membership', label: '💳 Membership' },
+  { href: '/dashboard/coach/recertification', label: '📋 Recertification' },
+  { href: '/dashboard/coach/events', label: '📅 Events' },
+  { href: '/dashboard/coach/jobs', label: '💼 Job Board' },
+  { href: '/dashboard/coach/jobs/my-applications', label: '📨 My Applications' },
+  { href: '/dashboard/coach/resources', label: '📚 Resources' },
 ];
 
 interface DashboardSidebarProps {
