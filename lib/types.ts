@@ -5,6 +5,26 @@ export type AppRole =
   | "coach";
 
 export type TemplateId = "minimalist" | "vibrant" | "dark";
+export type NavItem = {
+  href: string;
+  label: string;
+};
+export type ChapterSectionType =
+  | "about"
+  | "why_action_learning"
+  | "coaches"
+  | "events"
+  | "testimonials"
+  | "cta"
+  | "custom";
+
+export interface ChapterContentSection {
+  id: string;
+  type: ChapterSectionType;
+  title: string;
+  body?: string | null;
+  items?: string[];
+}
 
 export type CertificationLevel = "CALC" | "PALC" | "SALC" | "MALC";
 export type PaymentType = "enrollment" | "certification";
@@ -32,10 +52,7 @@ export interface GlobalBrandingSettings {
   logo_url: string | null;
   site_name: string;
   header_cta_label: string;
-  primary_nav_json: Array<{
-    href: string;
-    label: string;
-  }>;
+  primary_nav_json: NavItem[];
   footer_summary: string;
   executive_director_email: string;
   brand_color: string;
@@ -162,6 +179,8 @@ export interface GeneratedChapterContent {
   testimonial_formatted: string;
   cta_text: string;
   meta_description: string;
+  local_nav_json?: NavItem[];
+  sections?: ChapterContentSection[];
 }
 
 export interface SearchFilters {

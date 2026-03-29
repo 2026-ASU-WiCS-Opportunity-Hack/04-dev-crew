@@ -23,24 +23,43 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    console.log("[auth] No authenticated user found");
     return null;
   }
 
-  const { data: profileData } = await supabase
+  console.log("[auth] Authenticated user:", { id: user.id, email: user.email });
+
+  const { data: profileData, error: profileError } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
 
+  if (profileError) {
+    console.error("[auth] Error fetching profile:", profileError);
+  }
+
   const profile = (profileData as ProfileRecord | null) ?? null;
 
-  const { data: coachData } = await supabase
+  console.log("[auth] Profile:", {
+    found: !!profile,
+    role: profile?.role ?? null,
+    chapter_id: profile?.chapter_id ?? null,
+  });
+
+  const { data: coachData, error: coachError } = await supabase
     .from("coaches")
     .select("*")
     .eq("profile_id", user.id)
     .maybeSingle();
 
+  if (coachError) {
+    console.error("[auth] Error fetching coach record:", coachError);
+  }
+
   const coach = (coachData as CoachRecord | null) ?? null;
+
+  console.log("[auth] Coach record:", { found: !!coach, id: coach?.id ?? null });
 
   return {
     user: {

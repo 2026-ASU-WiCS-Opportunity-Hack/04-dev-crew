@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CoachRecord } from '@/lib/types';
 import CertBadge from './CertBadge';
 
@@ -20,21 +20,98 @@ const STATUS_CONFIG = {
 type PaymentMethod = 'stripe' | 'paypal';
 type PaymentType = 'membership' | 'renewal' | 'certification';
 
-const PAYMENT_TYPES: { key: PaymentType; label: string; description: string; amount: string }[] = [
-  { key: 'membership', label: 'New Membership', description: 'Join or reinstate your WIAL membership', amount: 'Contact your chapter lead for pricing' },
-  { key: 'renewal', label: 'Membership Renewal', description: 'Renew your existing annual membership', amount: 'Contact your chapter lead for pricing' },
-  { key: 'certification', label: 'Certification Fee', description: 'Pay for your certification or recertification', amount: 'Contact your chapter lead for pricing' },
+const PAYMENT_TYPES: { key: PaymentType; label: string; description: string; amount: string; amountCents: number }[] = [
+  { key: 'membership', label: 'New Membership', description: 'Join or reinstate your WIAL membership', amount: '$100.00', amountCents: 10000 },
+  { key: 'renewal', label: 'Membership Renewal', description: 'Renew your existing annual membership', amount: '$75.00', amountCents: 7500 },
+  { key: 'certification', label: 'Certification Fee', description: 'Pay for your certification or recertification', amount: '$50.00', amountCents: 5000 },
 ];
 
 export default function MembershipCard({ coach, status, expiryDate, daysLeft }: MembershipCardProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [selectedType, setSelectedType] = useState<PaymentType | null>(null);
   const [showRenew, setShowRenew] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const cfg = STATUS_CONFIG[status];
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === '1') {
+      setSuccessMsg('Payment completed successfully. Your membership will be updated shortly.');
+    } else if (params.get('paypal') === 'success') {
+      setSuccessMsg('PayPal payment completed. Your membership will be updated shortly.');
+    } else if (params.get('canceled') === '1' || params.get('paypal') === 'canceled') {
+      setError('Payment was canceled. No charge was made.');
+    }
+  }, []);
+
+  async function handlePayment() {
+    if (!selectedType || !selectedMethod) return;
+    setLoading(true);
+    setError(null);
+
+    const payerName = coach.full_name;
+    const payerEmail = coach.contact_email ?? '';
+
+    if (!payerEmail) {
+      setError('No email address on your coach profile. Please update your profile first.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      if (selectedMethod === 'stripe') {
+        const res = await fetch('/api/stripe/create-coach-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            coachId: coach.id,
+            payerName,
+            payerEmail,
+            membershipType: selectedType,
+          }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(`${data.error ?? 'Checkout failed'}${data.details ? ` — ${JSON.stringify(data.details)}` : ''}`);
+        if (data.data?.checkoutUrl) window.location.href = data.data.checkoutUrl;
+      } else {
+        const res = await fetch('/api/paypal/create-coach-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            coachId: coach.id,
+            payerName,
+            payerEmail,
+            membershipType: selectedType,
+          }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(`${data.error ?? 'PayPal order failed'}${data.details ? ` — ${JSON.stringify(data.details)}` : ''}`);
+        if (data.data?.approvalUrl) window.location.href = data.data.approvalUrl;
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+      {successMsg && (
+        <div style={{ padding: '0.9rem 1.25rem', borderRadius: 8, background: '#d1fae5', color: '#065f46', fontWeight: 600, fontSize: '0.9rem' }}>
+          ✓ {successMsg}
+        </div>
+      )}
+
+      {error && !showRenew && (
+        <div style={{ padding: '0.9rem 1.25rem', borderRadius: 8, background: '#fee2e2', color: '#dc2626', fontWeight: 600, fontSize: '0.9rem' }}>
+          {error}
+        </div>
+      )}
 
       {/* Status card */}
       <div className="dash-card">
@@ -85,7 +162,7 @@ export default function MembershipCard({ coach, status, expiryDate, daysLeft }: 
         </div>
       </div>
 
-      {/* Renewal form */}
+      {/* Payment form */}
       {showRenew && (
         <div className="form-section">
           <h3>Renew / Pay Dues</h3>
@@ -99,12 +176,13 @@ export default function MembershipCard({ coach, status, expiryDate, daysLeft }: 
                   key={pt.key}
                   className={`payment-method-card${selectedType === pt.key ? ' payment-method-card--selected' : ''}`}
                   onClick={() => setSelectedType(pt.key)}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div style={{ flex: 1 }}>
                     <p className="payment-method-card__label">{pt.label}</p>
                     <p className="payment-method-card__sub">{pt.description}</p>
                   </div>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--brand)', whiteSpace: 'nowrap' }}>
                     {pt.amount}
                   </span>
                 </div>
@@ -120,6 +198,7 @@ export default function MembershipCard({ coach, status, expiryDate, daysLeft }: 
                 <div
                   className={`payment-method-card${selectedMethod === 'stripe' ? ' payment-method-card--selected' : ''}`}
                   onClick={() => setSelectedMethod('stripe')}
+                  style={{ cursor: 'pointer' }}
                 >
                   <span className="payment-method-card__icon">💳</span>
                   <div>
@@ -130,6 +209,7 @@ export default function MembershipCard({ coach, status, expiryDate, daysLeft }: 
                 <div
                   className={`payment-method-card${selectedMethod === 'paypal' ? ' payment-method-card--selected' : ''}`}
                   onClick={() => setSelectedMethod('paypal')}
+                  style={{ cursor: 'pointer' }}
                 >
                   <span className="payment-method-card__icon">🅿️</span>
                   <div>
@@ -141,33 +221,47 @@ export default function MembershipCard({ coach, status, expiryDate, daysLeft }: 
             </div>
           )}
 
+          {selectedType && (
+            <p style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 700 }}>
+              Total: {PAYMENT_TYPES.find(p => p.key === selectedType)?.amount} USD
+            </p>
+          )}
+
+          {error && (
+            <p style={{ color: '#dc2626', fontSize: '0.9rem', margin: '0 0 0.75rem' }}>{error}</p>
+          )}
+
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem' }}>
             <button
               className="button-primary"
-              disabled={!selectedType || !selectedMethod}
-              style={{ opacity: (!selectedType || !selectedMethod) ? 0.5 : 1, cursor: (!selectedType || !selectedMethod) ? 'not-allowed' : 'pointer' }}
-              onClick={() => alert('Payment integration coming soon — your chapter lead will be notified.')}
+              disabled={!selectedType || !selectedMethod || loading}
+              style={{ opacity: (!selectedType || !selectedMethod || loading) ? 0.5 : 1, cursor: (!selectedType || !selectedMethod || loading) ? 'not-allowed' : 'pointer' }}
+              onClick={handlePayment}
             >
-              Proceed to Payment
+              {loading ? 'Processing...' : 'Proceed to Payment'}
             </button>
-            <button className="button-secondary" onClick={() => { setShowRenew(false); setSelectedMethod(null); setSelectedType(null); }}>
+            <button
+              className="button-secondary"
+              onClick={() => { setShowRenew(false); setSelectedMethod(null); setSelectedType(null); setError(null); }}
+              disabled={loading}
+            >
               Cancel
             </button>
           </div>
           <p className="form-hint" style={{ marginTop: '0.75rem' }}>
-            Payment amounts are set by your chapter lead. You will be redirected to complete payment securely.
+            You will be redirected to complete payment securely. Membership updates are processed within 24 hours.
           </p>
         </div>
       )}
 
-      {/* Payment history placeholder */}
+      {/* Payment history */}
       <div className="dash-card">
         <div className="dash-card__header">
           <h2 className="dash-card__title">Payment History</h2>
         </div>
         <div className="dash-card__body">
           <div className="coaches-empty" style={{ padding: '2rem 0' }}>
-            <p style={{ fontSize: '0.9rem' }}>No payment records found. Your payment history will appear here once integrated.</p>
+            <p style={{ fontSize: '0.9rem' }}>No payment records found. Your payment history will appear here once you complete a payment.</p>
           </div>
         </div>
       </div>

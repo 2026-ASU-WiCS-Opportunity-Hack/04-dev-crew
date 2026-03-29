@@ -36,6 +36,9 @@ export function AdminDashboard() {
   /* Report state */
   const [showReport, setShowReport] = useState(false);
 
+  /* Overdue state */
+  const [markingOverdue, setMarkingOverdue] = useState<string | null>(null);
+
   /* Recertification state */
   const [recertCoaches, setRecertCoaches] = useState<CoachWithExpiry[]>([]);
   const [recertLoading, setRecertLoading] = useState(false);
@@ -62,6 +65,37 @@ export function AdminDashboard() {
   const totalRevenue = payments
     .filter((p) => p.status === "paid")
     .reduce((sum, p) => sum + p.amount_cents, 0);
+
+  /* ── Payment conversion rate ── */
+  const totalInitiated = payments.length;
+  const totalPaid = payments.filter((p) => p.status === "paid").length;
+  const conversionRate = totalInitiated > 0 ? Math.round((totalPaid / totalInitiated) * 100) : 0;
+
+  /* ── Chapters with payment issues ── */
+  const chaptersNoPayment = chapters.filter(
+    (ch) => !payments.some((p) => p.chapter_id === ch.id),
+  );
+  const chaptersUnpaid = chapters.filter((ch) => {
+    const chPayments = payments.filter((p) => p.chapter_id === ch.id);
+    return chPayments.length > 0 && !chPayments.some((p) => p.status === "paid");
+  });
+
+  /* ── Mark payment as overdue ── */
+  async function markAsOverdue(paymentId: string) {
+    setMarkingOverdue(paymentId);
+    try {
+      await fetch("/api/admin/payments/mark-overdue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId }),
+      });
+      setPayments((prev) =>
+        prev.map((p) => (p.id === paymentId ? { ...p, status: "overdue" } : p)),
+      );
+    } finally {
+      setMarkingOverdue(null);
+    }
+  }
 
   /* ── Revenue per chapter for chart ── */
   const chapterRevenueData = chapters.map((ch) => {
@@ -190,6 +224,12 @@ export function AdminDashboard() {
         <div className="stat-card"><strong>{coaches.length}</strong><span>Coaches</span></div>
         <div className="stat-card"><strong>{payments.length}</strong><span>Payments</span></div>
         <div className="stat-card"><strong>{centsToCurrency(totalRevenue)}</strong><span>Total Revenue</span></div>
+        <div className="stat-card">
+          <strong style={{ color: conversionRate >= 90 ? "#15803d" : conversionRate >= 70 ? "#a16207" : "#dc2626" }}>
+            {conversionRate}%
+          </strong>
+          <span>Conversion Rate</span>
+        </div>
       </div>
 
       {/* Action buttons */}
@@ -204,6 +244,47 @@ export function AdminDashboard() {
           {recertLoading ? "Checking..." : "Check Recertification"}
         </button>
       </div>
+
+      {/* Chapters with payment issues */}
+      {(chaptersNoPayment.length > 0 || chaptersUnpaid.length > 0) && (
+        <section>
+          <h3 className="section-title" style={{ fontSize: "1.25rem" }}>Chapters Requiring Attention</h3>
+          <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", marginTop: "0.75rem" }}>
+            {chaptersNoPayment.length > 0 && (
+              <div className="contact-card" style={{ padding: "1.25rem", borderLeft: "4px solid #dc2626" }}>
+                <p style={{ fontWeight: 700, fontSize: "0.85rem", textTransform: "uppercase", color: "#dc2626", marginBottom: "0.75rem" }}>
+                  No Payments Ever ({chaptersNoPayment.length})
+                </p>
+                {chaptersNoPayment.map((ch) => (
+                  <div key={ch.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.35rem 0", borderBottom: "1px solid var(--border)", fontSize: "0.9rem" }}>
+                    <span style={{ fontWeight: 600 }}>{ch.name}</span>
+                    <span style={{ color: "var(--muted)" }}>{ch.country}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {chaptersUnpaid.length > 0 && (
+              <div className="contact-card" style={{ padding: "1.25rem", borderLeft: "4px solid #a16207" }}>
+                <p style={{ fontWeight: 700, fontSize: "0.85rem", textTransform: "uppercase", color: "#a16207", marginBottom: "0.75rem" }}>
+                  Pending / Overdue Only ({chaptersUnpaid.length})
+                </p>
+                {chaptersUnpaid.map((ch) => {
+                  const chPayments = payments.filter((p) => p.chapter_id === ch.id);
+                  const hasOverdue = chPayments.some((p) => p.status === "overdue");
+                  return (
+                    <div key={ch.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.35rem 0", borderBottom: "1px solid var(--border)", fontSize: "0.9rem" }}>
+                      <span style={{ fontWeight: 600 }}>{ch.name}</span>
+                      <span className="badge" style={{ background: hasOverdue ? "#fee2e2" : "#fef9c3", color: hasOverdue ? "#dc2626" : "#a16207" }}>
+                        {hasOverdue ? "overdue" : "pending"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Revenue Chart */}
       <section>
@@ -349,22 +430,41 @@ export function AdminDashboard() {
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Payer</th>
+                <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Chapter</th>
                 <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Type</th>
                 <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Amount</th>
                 <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--muted)" }}>Status</th>
+                <th style={{ padding: "0.5rem 0.75rem" }} />
               </tr>
             </thead>
             <tbody>
-              {payments.slice(0, 20).map((p) => (
+              {payments.slice(0, 20).map((p) => {
+                const chapterName = chapters.find((ch) => ch.id === p.chapter_id)?.name ?? "—";
+                return (
                 <tr key={p.id} style={{ borderBottom: "1px solid var(--border)" }}>
                   <td style={{ padding: "0.5rem 0.75rem" }}>{p.payer_name}</td>
+                  <td style={{ padding: "0.5rem 0.75rem", color: "var(--muted)", fontSize: "0.85rem" }}>{chapterName}</td>
                   <td style={{ padding: "0.5rem 0.75rem", textTransform: "capitalize" }}>{p.payment_type}</td>
                   <td style={{ padding: "0.5rem 0.75rem" }}>{centsToCurrency(p.amount_cents)}</td>
                   <td style={{ padding: "0.5rem 0.75rem" }}>
                     <PaymentBadge status={p.status} />
                   </td>
+                  <td style={{ padding: "0.5rem 0.75rem" }}>
+                    {p.status === "pending" && (
+                      <button
+                        type="button"
+                        onClick={() => markAsOverdue(p.id)}
+                        disabled={markingOverdue === p.id}
+                        style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem", cursor: "pointer", opacity: markingOverdue === p.id ? 0.5 : 1 }}
+                        className="button-secondary"
+                      >
+                        {markingOverdue === p.id ? "..." : "Mark Overdue"}
+                      </button>
+                    )}
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

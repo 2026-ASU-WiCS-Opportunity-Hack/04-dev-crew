@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface RsvpButtonProps {
   eventId: string;
@@ -22,15 +21,13 @@ export function RsvpButton({ eventId }: RsvpButtonProps) {
     setLoading(true);
     setError(null);
     try {
-      const supabase = createSupabaseBrowserClient();
-      const { error: insertError } = await supabase.from("rsvps").insert({
-        event_id: eventId,
-        attendee_name: name,
-        attendee_email: email,
-        status: "registered",
+      const res = await fetch("/api/rsvps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId, attendee_name: name, attendee_email: email }),
       });
-
-      if (insertError) throw insertError;
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error ?? "RSVP failed");
       setSubmitted(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "RSVP failed");

@@ -8,7 +8,16 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { profile } = await requireAuth();
+  const { profile, coach } = await requireAuth();
 
-  return <DashboardShell role={profile.role}>{children}</DashboardShell>;
+  return (
+    <DashboardShell
+      role={profile.role}
+      coachName={coach?.full_name ?? null}
+      coachCertLevel={coach?.certification_level ?? null}
+      coachId={coach?.id ?? null}
+    >
+      {children}
+    </DashboardShell>
+  );
 }

@@ -37,7 +37,7 @@ export function PaymentForm({ chapterId, showPaypal }: PaymentFormProps) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Checkout failed");
+      if (!res.ok) throw new Error(data.details ?? data.error ?? "Checkout failed");
 
       const url = data.data?.checkoutUrl ?? data.checkoutUrl;
       if (url) window.location.href = url;

@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { getGlobalBrandingSettings } from '@/lib/branding';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
+import { AccessibilityWidget } from '@/components/layout/AccessibilityWidget';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -23,6 +24,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}` }} />
+      </head>
       <body
         data-template={branding.template_id}
         style={
@@ -48,6 +52,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             siteName={branding.site_name}
           />
         </div>
+        <AccessibilityWidget />
       </body>
     </html>
   );

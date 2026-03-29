@@ -4,15 +4,22 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import CertBadge from "@/components/coaches/CertBadge";
 import { NavLink } from "@/components/dashboard/NavLink";
-import type { AppRole } from "@/lib/types";
+import type { AppRole, CertificationLevel } from "@/lib/types";
 
 export function DashboardShell({
   children,
   role,
+  coachName,
+  coachCertLevel,
+  coachId,
 }: {
   children: ReactNode;
   role: AppRole;
+  coachName?: string | null;
+  coachCertLevel?: CertificationLevel | null;
+  coachId?: string | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -33,7 +40,14 @@ export function DashboardShell({
             <Link href="/" className="site-wordmark" style={{ fontSize: "1.1rem" }}>
               WIAL
             </Link>
-            <p className="dashboard-shell__role">{role.replace("_", " ")}</p>
+            {role === "coach" && coachName ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <p className="dashboard-shell__role">{coachName}</p>
+                {coachCertLevel && <CertBadge level={coachCertLevel} />}
+              </div>
+            ) : (
+              <p className="dashboard-shell__role">{role.replace("_", " ")}</p>
+            )}
           </div>
         </div>
 
@@ -163,17 +177,40 @@ export function DashboardShell({
           {role === "coach" && (
             <>
               <NavLink href="/dashboard/coach" icon="⌂" collapsed={collapsed}>
-                My Dashboard
+                Overview
               </NavLink>
-              <NavLink href="/dashboard/coach/profile" icon="◍" collapsed={collapsed}>
-                Profile
+              <NavLink href="/dashboard/coach/profile" icon="✎" collapsed={collapsed}>
+                Edit Profile
               </NavLink>
               <NavLink href="/dashboard/coach/sessions" icon="◷" collapsed={collapsed}>
-                Sessions
+                Session Logs
               </NavLink>
               <NavLink href="/dashboard/coach/credits" icon="★" collapsed={collapsed}>
                 CE Credits
               </NavLink>
+              <NavLink href="/dashboard/coach/membership" icon="◈" collapsed={collapsed}>
+                Membership
+              </NavLink>
+              <NavLink href="/dashboard/coach/recertification" icon="≋" collapsed={collapsed}>
+                Recertification
+              </NavLink>
+              <NavLink href="/dashboard/coach/events" icon="◌" collapsed={collapsed}>
+                Events
+              </NavLink>
+              <NavLink href="/dashboard/coach/jobs" icon="▤" collapsed={collapsed}>
+                Job Board
+              </NavLink>
+              <NavLink href="/dashboard/coach/jobs/my-applications" icon="✉" collapsed={collapsed}>
+                My Applications
+              </NavLink>
+              <NavLink href="/dashboard/coach/resources" icon="□" collapsed={collapsed}>
+                Resources
+              </NavLink>
+              {coachId && (
+                <NavLink href={`/coaches/${coachId}`} icon="◍" collapsed={collapsed}>
+                  Public Profile
+                </NavLink>
+              )}
             </>
           )}
         </nav>

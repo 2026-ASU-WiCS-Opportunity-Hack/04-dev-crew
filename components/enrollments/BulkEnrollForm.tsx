@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface BulkEnrollFormProps {
   chapterId: string;
@@ -24,20 +23,20 @@ export function BulkEnrollForm({ chapterId, onCreated }: BulkEnrollFormProps) {
     setSaving(true);
     setError(null);
     try {
-      const supabase = createSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const { error: insertError } = await supabase.from("enrollments").insert({
-        chapter_id: chapterId,
-        company_name: companyName,
-        company_code: companyCode.toUpperCase(),
-        total_licenses: totalLicenses,
-        contact_email: contactEmail || null,
-        contact_name: contactName || null,
-        created_by: user?.id ?? null,
+      const res = await fetch('/api/enrollments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chapter_id: chapterId,
+          company_name: companyName,
+          company_code: companyCode.toUpperCase(),
+          total_licenses: totalLicenses,
+          contact_email: contactEmail || null,
+          contact_name: contactName || null,
+        }),
       });
-
-      if (insertError) throw insertError;
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error ?? 'Failed to create enrollment');
 
       setCompanyName("");
       setCompanyCode("");

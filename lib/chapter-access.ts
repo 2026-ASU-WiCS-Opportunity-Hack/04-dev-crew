@@ -40,26 +40,51 @@ export async function getOptionalChapterAccessContext(): Promise<AccessContext |
   } = await supabase.auth.getUser();
 
   if (!user) {
+    console.log("[chapter-access] No authenticated user found");
     return null;
   }
 
-  const { data: profileData } = await supabase
+  console.log("[chapter-access] Authenticated user:", { id: user.id, email: user.email });
+
+  const { data: profileData, error: profileError } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
 
+  if (profileError) {
+    console.error("[chapter-access] Error fetching profile:", profileError);
+  }
+
   const profile = (profileData as ProfileRecord | null) ?? null;
+
+  console.log("[chapter-access] Profile:", {
+    found: !!profile,
+    role: profile?.role ?? null,
+    chapter_id: profile?.chapter_id ?? null,
+  });
 
   let chapter: ChapterRecord | null = null;
   if (profile?.chapter_id) {
-    const { data: chapterData } = await supabase
+    const { data: chapterData, error: chapterError } = await supabase
       .from("chapters")
       .select("*")
       .eq("id", profile.chapter_id)
       .maybeSingle();
 
+    if (chapterError) {
+      console.error("[chapter-access] Error fetching chapter:", chapterError);
+    }
+
     chapter = (chapterData as ChapterRecord | null) ?? null;
+    console.log("[chapter-access] Chapter:", {
+      found: !!chapter,
+      id: chapter?.id ?? null,
+      name: chapter?.name ?? null,
+      slug: chapter?.slug ?? null,
+    });
+  } else {
+    console.log("[chapter-access] No chapter_id on profile — chapter lookup skipped");
   }
 
   return {
@@ -155,22 +180,43 @@ export async function requireChapterDashboardAccess(
   const context = await getOptionalChapterAccessContext();
 
   if (!context?.user) {
+    console.log("[chapter-access] requireChapterDashboardAccess: no user → redirect to login");
     redirect(loginPath);
   }
 
   if (!context.profile) {
+    console.log("[chapter-access] requireChapterDashboardAccess: no profile → unauthorized(no-profile)");
     redirectToUnauthorized("no-profile", unauthorizedPath);
   }
 
   const isSuperAdmin = context.profile.role === "super_admin";
 
   if (!isSuperAdmin && !allowedRoles.includes(context.profile.role)) {
+    console.log("[chapter-access] requireChapterDashboardAccess: role not allowed →", {
+      role: context.profile.role,
+      allowedRoles,
+      isSuperAdmin,
+    });
     notFound();
   }
 
-  if (!context.chapter) {
+  if (!context.chapter && !isSuperAdmin) {
+    console.log("[chapter-access] requireChapterDashboardAccess: no chapter → unauthorized(no-chapter). Fix: assign a chapter_id to this user's profile in Supabase.", {
+      userId: context.user.id,
+      email: context.user.email,
+      role: context.profile.role,
+      chapter_id: context.profile.chapter_id ?? null,
+    });
     redirectToUnauthorized("no-chapter", unauthorizedPath);
   }
+
+  console.log("[chapter-access] requireChapterDashboardAccess: access granted →", {
+    userId: context.user.id,
+    role: context.profile.role,
+    chapterId: context.chapter?.id ?? null,
+    chapterSlug: context.chapter?.slug ?? null,
+    isSuperAdmin,
+  });
 
   return {
     ...context,
