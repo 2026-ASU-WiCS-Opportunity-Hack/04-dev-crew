@@ -607,7 +607,7 @@ async function seedCoaches(chapterIds: Record<string, string>) {
     const embedding = await createEmbedding(embeddingText).catch(() => null);
 
     const payload = {
-      chapter_id: chapterIds[coach.chapterSlug] ?? null,
+      chapter_id: coach.chapterSlug ? chapterIds[coach.chapterSlug] ?? null : null,
       full_name: coach.full_name,
       certification_level: coach.certification_level,
       location_city: coach.location_city,
@@ -689,6 +689,21 @@ async function seedEventsAndPayments(chapterIds: Record<string, string>) {
       name: client.name,
       website_url: client.website_url,
       description: client.description,
+    });
+  }
+
+  // Seed enrollments for /enroll page testing
+  const enrollmentSeeds = [
+    { chapterSlug: "usa", company_name: "Acme Corp", company_code: "ACME2025", total_licenses: 20, used_licenses: 5, contact_email: "hr@acme.com", contact_name: "Jane Smith" },
+    { chapterSlug: "nigeria", company_name: "Lagos Solutions Ltd", company_code: "LAGOS2025", total_licenses: 10, used_licenses: 2, contact_email: "admin@lagossolutions.ng", contact_name: "Tolu Balogun" },
+    { chapterSlug: "brazil", company_name: "TechBrasil SA", company_code: "TECHBR2025", total_licenses: 15, used_licenses: 0, contact_email: "rh@techbrasil.com.br", contact_name: "Carlos Lima" },
+  ];
+
+  for (const enrollment of enrollmentSeeds) {
+    const { chapterSlug, ...rest } = enrollment;
+    await supabase.from("enrollments").insert({
+      chapter_id: chapterIds[chapterSlug],
+      ...rest,
     });
   }
 }

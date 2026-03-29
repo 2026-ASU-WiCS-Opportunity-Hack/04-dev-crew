@@ -8,7 +8,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const CERT_LEVELS: CertificationLevel[] = ['CALC', 'PALC', 'SALC', 'MALC'];
 
-type CoachWithChapter = CoachRecord & { similarity?: number; chapter_name?: string; chapter_id?: string };
+type CoachWithChapter = CoachRecord & { similarity?: number; chapter_name?: string };
 
 export default function CoachesPage() {
   const [allCoaches, setAllCoaches] = useState<CoachWithChapter[]>([]);
