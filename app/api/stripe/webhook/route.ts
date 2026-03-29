@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getStripeEnv } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getStripeClient } from "@/lib/stripe/client";
+import { sendPaymentConfirmationEmail } from "@/lib/email/send";
 
 export async function POST(request: Request) {
   try {
@@ -53,16 +54,37 @@ export async function POST(request: Request) {
 
         baseDate.setFullYear(baseDate.getFullYear() + 2);
 
+        const newExpiry = baseDate.toISOString().slice(0, 10);
+
         await supabase
           .from("coaches")
-          .update({ certification_expiry: baseDate.toISOString().slice(0, 10) })
+          .update({ certification_expiry: newExpiry })
           .eq("id", metadata.coachId);
 
         console.log("[webhook] Coach membership updated:", {
           coachId: metadata.coachId,
           membershipType: metadata.membershipType,
-          newExpiry: baseDate.toISOString().slice(0, 10),
+          newExpiry,
         });
+
+        // Send payment confirmation email
+        const { data: coachForEmail } = await supabase
+          .from("coaches")
+          .select("full_name, contact_email")
+          .eq("id", metadata.coachId)
+          .maybeSingle();
+
+        if (coachForEmail?.contact_email) {
+          const amountCents = typeof session.amount_total === "number" ? session.amount_total : 0;
+          await sendPaymentConfirmationEmail({
+            to: coachForEmail.contact_email,
+            name: coachForEmail.full_name,
+            membershipType: metadata.membershipType,
+            amountCents,
+            newExpiry,
+            siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+          }).catch((err) => console.error("[webhook] Failed to send payment email:", err));
+        }
       } else if (metadata.chapterId) {
         // Chapter dues payment — update payments table
         await supabase
