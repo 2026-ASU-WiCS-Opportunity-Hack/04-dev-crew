@@ -4,7 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { centsToCurrency } from "@/lib/utils";
 import { RevenueChart } from "@/components/payments/RevenueChart";
-import type { ChapterRecord, CoachRecord, PaymentRecord } from "@/lib/types";
+import type {
+  ChapterRecord,
+  CoachRecord,
+  PaymentRecord,
+} from "@/lib/types";
 
 interface CoachWithExpiry {
   id: string;
