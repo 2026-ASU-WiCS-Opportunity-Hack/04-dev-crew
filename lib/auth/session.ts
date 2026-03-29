@@ -43,6 +43,27 @@ export function getRequiredRolesForPath(pathname: string): AppRole[] | null {
     return ["super_admin"];
   }
 
+  if (
+    pathname.startsWith("/dashboard/chapter/payments") ||
+    pathname.startsWith("/dashboard/chapter/enrollments") ||
+    pathname.startsWith("/dashboard/chapter/coaches") ||
+    pathname.startsWith("/dashboard/chapter/create") ||
+    pathname.startsWith("/dashboard/chapter/jobs")
+  ) {
+    return ["super_admin", "chapter_lead"];
+  }
+
+  if (
+    pathname === "/dashboard/chapter" ||
+    pathname.startsWith("/dashboard/chapter/edit") ||
+    pathname.startsWith("/dashboard/chapter/events") ||
+    pathname.startsWith("/dashboard/chapter/clients") ||
+    pathname.startsWith("/dashboard/chapter/testimonials") ||
+    pathname.startsWith("/dashboard/chapter/campaigns")
+  ) {
+    return ["super_admin", "chapter_lead", "content_creator"];
+  }
+
   if (pathname.startsWith("/dashboard/chapter")) {
     return ["super_admin", "chapter_lead", "content_creator"];
   }
