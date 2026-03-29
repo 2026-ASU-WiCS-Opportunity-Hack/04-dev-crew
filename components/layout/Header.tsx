@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { MobileNav } from '@/components/layout/MobileNav';
 
-const navItems = [
+const defaultNavItems = [
   { href: '/certification', label: 'Certification' },
   { href: '/coaches', label: 'Find a Coach' },
   { href: '/events', label: 'Programs' },
@@ -10,12 +10,34 @@ const navItems = [
   { href: '/contact', label: 'Contact' },
 ];
 
-export function Header() {
+type HeaderProps = {
+  siteName?: string;
+  headerCtaLabel?: string;
+  logoUrl?: string | null;
+  navItems?: Array<{
+    href: string;
+    label: string;
+  }>;
+};
+
+export function Header({
+  siteName = 'WIAL Global',
+  headerCtaLabel = 'Login',
+  logoUrl,
+  navItems = defaultNavItems,
+}: HeaderProps) {
   return (
     <header className="site-header">
       <div className="container site-header__inner">
         <Link className="site-wordmark" href="/">
-          WIAL Global
+          {logoUrl ? (
+            <span className="site-wordmark__with-logo">
+              <img alt="" className="site-wordmark__logo" src={logoUrl} />
+              <span>{siteName}</span>
+            </span>
+          ) : (
+            siteName
+          )}
         </Link>
 
         <nav aria-label="Primary" className="site-nav">
@@ -45,7 +67,7 @@ export function Header() {
           </button>
 
           <Link className="site-header__cta" href="/login">
-            Login
+            {headerCtaLabel}
           </Link>
 
           <MobileNav items={navItems} />

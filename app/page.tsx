@@ -13,6 +13,12 @@ const methodologyCards = [
       'Transform a group of individuals into a high-performing team focused on collective success.',
     accent: 'blue',
   },
+  {
+    title: 'Reflective Learning',
+    description:
+      'Turn every real challenge into a learning loop that improves judgment, leadership, and action.',
+    accent: 'gold',
+  },
 ];
 
 const advantages = [
@@ -110,6 +116,18 @@ export default function HomePage() {
       </section>
 
       <section className="home-section">
+        <div className="container">
+          <div className="timeline-card animate-rise">
+            <strong>Mission statement</strong>
+            <p>
+              WIAL advances Action Learning worldwide by helping organizations solve
+              urgent problems while developing leaders, coaches, and stronger teams.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-section section-tight">
         <div className="container home-method">
           <div className="home-method__intro animate-rise">
             <h2 className="home-heading">What is Action Learning?</h2>
@@ -195,7 +213,7 @@ export default function HomePage() {
         <div className="container animate-rise">
           <div className="home-section__header">
             <div>
-              <h2 className="home-heading">Upcoming events</h2>
+              <h2 className="home-heading">Featured events</h2>
               <p className="home-lead">Training, webinars, and global learning moments.</p>
             </div>
             <Link className="home-link" href="/events">

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { ProfileRecord } from "@/lib/types";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import type { ChapterRecord, ProfileRecord } from "@/lib/types";
 import { NavLink } from "@/components/dashboard/NavLink";
 
@@ -42,6 +43,7 @@ export default async function DashboardLayout({
     }
   }
 
+  return <DashboardShell role={role}>{children}</DashboardShell>;
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {/* Sidebar */}

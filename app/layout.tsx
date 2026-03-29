@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { getGlobalBrandingSettings } from '@/lib/branding';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import './globals.css';
@@ -17,14 +18,35 @@ type RootLayoutProps = {
   children: ReactNode;
 };
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const branding = await getGlobalBrandingSettings();
+
   return (
     <html lang="en">
-      <body>
+      <body
+        data-template={branding.template_id}
+        style={
+          {
+            '--brand': branding.brand_color,
+            '--brand-dark': branding.brand_dark_color,
+            '--accent': branding.accent_color,
+            '--footer-background': branding.footer_background,
+          } as CSSProperties
+        }
+      >
         <div className="site-shell">
-          <Header />
+          <Header
+            headerCtaLabel={branding.header_cta_label}
+            logoUrl={branding.logo_url}
+            navItems={branding.primary_nav_json}
+            siteName={branding.site_name}
+          />
           <main className="site-main">{children}</main>
-          <Footer />
+          <Footer
+            executiveDirectorEmail={branding.executive_director_email}
+            footerSummary={branding.footer_summary}
+            siteName={branding.site_name}
+          />
         </div>
       </body>
     </html>

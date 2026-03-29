@@ -4,6 +4,8 @@ export type AppRole =
   | "content_creator"
   | "coach";
 
+export type TemplateId = "minimalist" | "vibrant" | "dark";
+
 export type CertificationLevel = "CALC" | "PALC" | "SALC" | "MALC";
 export type PaymentType = "enrollment" | "certification";
 export type PaymentStatus = "pending" | "paid" | "overdue" | "failed";
@@ -22,6 +24,27 @@ export interface ChapterRecord {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface GlobalBrandingSettings {
+  id: string;
+  template_id: TemplateId;
+  logo_url: string | null;
+  site_name: string;
+  header_cta_label: string;
+  primary_nav_json: Array<{
+    href: string;
+    label: string;
+  }>;
+  footer_summary: string;
+  executive_director_email: string;
+  brand_color: string;
+  brand_dark_color: string;
+  accent_color: string;
+  footer_background: string;
+  template_version: number;
+  updated_at: string | null;
+  updated_by: string | null;
 }
 
 export interface ProfileRecord {

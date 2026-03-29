@@ -32,7 +32,17 @@ const socialLinks = [
   },
 ];
 
-export function Footer() {
+type FooterProps = {
+  siteName?: string;
+  footerSummary?: string;
+  executiveDirectorEmail?: string;
+};
+
+export function Footer({
+  siteName = 'WIAL Global',
+  footerSummary = "The world's leading authority in Action Learning training and certification.",
+  executiveDirectorEmail = 'info@wial.org',
+}: FooterProps) {
   return (
     <footer className="site-footer">
       <div className="site-footer__panel">
@@ -40,12 +50,12 @@ export function Footer() {
           <div className="site-footer__grid">
             <div className="site-footer__brand">
               <Link className="site-wordmark site-wordmark--footer" href="/">
-                WIAL Global
+                {siteName}
               </Link>
-              <p className="site-footer__summary">
-                The world&apos;s leading authority in Action Learning training and
-                certification.
-              </p>
+              <p className="site-footer__summary">{footerSummary}</p>
+              <a className="site-footer__email" href={`mailto:${executiveDirectorEmail}`}>
+                Executive Director: {executiveDirectorEmail}
+              </a>
 
               <div className="site-footer__socials" aria-label="Social links">
                 {socialLinks.map((link) => (
@@ -91,7 +101,7 @@ export function Footer() {
           </div>
 
           <div className="site-footer__meta">
-            <p>© 2024 WIAL Global. All rights reserved.</p>
+            <p>© 2024 {siteName}. All rights reserved.</p>
             <div>
               <Link href="/contact">Privacy Policy</Link>
               <Link href="/contact">Terms of Service</Link>
