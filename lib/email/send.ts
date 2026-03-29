@@ -218,6 +218,270 @@ export async function sendAdminChapterPaymentAlertEmail({
   });
 }
 
+export async function sendCoachApprovalEmail({
+  to,
+  name,
+  approved,
+  siteUrl,
+}: {
+  to: string;
+  name: string;
+  approved: boolean;
+  siteUrl: string;
+}) {
+  const resend = getResend();
+  if (!resend) return;
+
+  const body = approved
+    ? `
+      <p style="color:#374151;line-height:1.6;">Hi ${name},</p>
+      <p style="color:#374151;line-height:1.6;">
+        Great news — your WIAL coach account has been <strong>approved</strong>! You can now log in to your
+        dashboard to complete your profile, track CE credits, apply for jobs, and more.
+      </p>
+      ${btn(`${siteUrl}/login`, 'Log in to Dashboard')}
+    `
+    : `
+      <p style="color:#374151;line-height:1.6;">Hi ${name},</p>
+      <p style="color:#374151;line-height:1.6;">
+        Your WIAL coach account access has been updated by your chapter administrator.
+        If you believe this is an error, please contact your chapter lead directly.
+      </p>
+    `;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: approved ? 'Your WIAL coach account has been approved' : 'Update on your WIAL coach account',
+    html: baseHtml(approved ? 'Account Approved!' : 'Account Status Update', body),
+  });
+}
+
+export async function sendJobApplicationAlertEmail({
+  to,
+  coachName,
+  coachEmail,
+  coachCertLevel,
+  jobTitle,
+  coverNote,
+  siteUrl,
+  jobId,
+}: {
+  to: string;
+  coachName: string;
+  coachEmail: string | null;
+  coachCertLevel: string;
+  jobTitle: string;
+  coverNote: string | null;
+  siteUrl: string;
+  jobId: string;
+}) {
+  const resend = getResend();
+  if (!resend) return;
+
+  const body = `
+    <p style="color:#374151;line-height:1.6;">A coach has applied for your job listing.</p>
+    <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+      <tr style="background:#f9fafb;">
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Job listing</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${jobTitle}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Applicant</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${coachName}${coachEmail ? ` &lt;${coachEmail}&gt;` : ''}</td>
+      </tr>
+      <tr style="background:#f9fafb;">
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Certification</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${coachCertLevel}</td>
+      </tr>
+      ${coverNote ? `<tr><td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;vertical-align:top;">Cover note</td><td style="padding:10px 14px;color:#111;font-size:0.85rem;">${coverNote}</td></tr>` : ''}
+    </table>
+    ${btn(`${siteUrl}/dashboard/chapter/jobs/${jobId}`, 'Review Application')}
+  `;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `New application for "${jobTitle}"`,
+    html: baseHtml('New Job Application', body),
+  });
+}
+
+export async function sendJobApplicationStatusEmail({
+  to,
+  coachName,
+  jobTitle,
+  status,
+  siteUrl,
+}: {
+  to: string;
+  coachName: string;
+  jobTitle: string;
+  status: string;
+  siteUrl: string;
+}) {
+  const resend = getResend();
+  if (!resend) return;
+
+  const statusLabel: Record<string, string> = {
+    shortlisted: 'shortlisted',
+    rejected: 'not moving forward at this time',
+    hired: 'selected',
+  };
+  const label = statusLabel[status] ?? status;
+
+  const body = `
+    <p style="color:#374151;line-height:1.6;">Hi ${coachName},</p>
+    <p style="color:#374151;line-height:1.6;">
+      There's an update on your application for <strong>${jobTitle}</strong>.
+      The chapter has marked your application as <strong>${label}</strong>.
+    </p>
+    ${status === 'shortlisted' ? `<p style="color:#374151;line-height:1.6;">Congratulations! The chapter may reach out to you directly with next steps.</p>` : ''}
+    ${btn(`${siteUrl}/dashboard/coach/jobs/my-applications`, 'View My Applications')}
+  `;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Application update — ${jobTitle}`,
+    html: baseHtml('Application Status Update', body),
+  });
+}
+
+export async function sendContactFormEmail({
+  adminTo,
+  senderEmail,
+  senderName,
+  country,
+  topic,
+  message,
+}: {
+  adminTo: string;
+  senderEmail: string;
+  senderName: string;
+  country: string;
+  topic: string;
+  message: string;
+}) {
+  const resend = getResend();
+  if (!resend) return;
+
+  const adminBody = `
+    <p style="color:#374151;line-height:1.6;">A new message was submitted via the contact form.</p>
+    <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+      <tr style="background:#f9fafb;">
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">From</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${senderName} &lt;${senderEmail}&gt;</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Country</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${country}</td>
+      </tr>
+      <tr style="background:#f9fafb;">
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Topic</td>
+        <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${topic}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;vertical-align:top;">Message</td>
+        <td style="padding:10px 14px;color:#111;font-size:0.85rem;">${message.replace(/\n/g, '<br>')}</td>
+      </tr>
+    </table>
+  `;
+
+  const ackBody = `
+    <p style="color:#374151;line-height:1.6;">Hi ${senderName},</p>
+    <p style="color:#374151;line-height:1.6;">
+      Thank you for reaching out! We've received your message about <strong>${topic}</strong>
+      and will get back to you as soon as possible.
+    </p>
+    <p style="color:#374151;line-height:1.6;">
+      In the meantime, feel free to browse our coach directory or upcoming events.
+    </p>
+  `;
+
+  await Promise.all([
+    resend.emails.send({
+      from: FROM,
+      to: adminTo,
+      replyTo: senderEmail,
+      subject: `Contact form: ${topic} — ${senderName}`,
+      html: baseHtml('New Contact Form Message', adminBody),
+    }),
+    resend.emails.send({
+      from: FROM,
+      to: senderEmail,
+      subject: 'We received your message — WIAL',
+      html: baseHtml('Message Received', ackBody),
+    }),
+  ]);
+}
+
+export async function sendEnrollmentEmails({
+  contactEmail,
+  contactName,
+  chapterLeadEmail,
+  companyName,
+  totalLicenses,
+  chapterName,
+  siteUrl,
+}: {
+  contactEmail: string | null;
+  contactName: string | null;
+  chapterLeadEmail: string | null;
+  companyName: string;
+  totalLicenses: number;
+  chapterName: string;
+  siteUrl: string;
+}) {
+  const resend = getResend();
+  if (!resend) return;
+
+  const sends: Promise<unknown>[] = [];
+
+  if (contactEmail) {
+    const body = `
+      <p style="color:#374151;line-height:1.6;">Hi ${contactName ?? 'there'},</p>
+      <p style="color:#374151;line-height:1.6;">
+        Your enrollment for <strong>${companyName}</strong> with <strong>${chapterName}</strong> has been confirmed.
+        You have been allocated <strong>${totalLicenses} license${totalLicenses !== 1 ? 's' : ''}</strong>.
+        Your chapter lead will be in touch with next steps.
+      </p>
+    `;
+    sends.push(resend.emails.send({
+      from: FROM,
+      to: contactEmail,
+      subject: `Enrollment confirmed — ${companyName} × ${chapterName}`,
+      html: baseHtml('Enrollment Confirmed', body),
+    }));
+  }
+
+  if (chapterLeadEmail) {
+    const body = `
+      <p style="color:#374151;line-height:1.6;">A new bulk enrollment has been created for your chapter.</p>
+      <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+        <tr style="background:#f9fafb;">
+          <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Company</td>
+          <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${companyName}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Licenses</td>
+          <td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${totalLicenses}</td>
+        </tr>
+        ${contactName ? `<tr style="background:#f9fafb;"><td style="padding:10px 14px;color:#6b7280;font-size:0.85rem;">Contact</td><td style="padding:10px 14px;color:#111;font-weight:600;font-size:0.85rem;">${contactName}${contactEmail ? ` &lt;${contactEmail}&gt;` : ''}</td></tr>` : ''}
+      </table>
+      ${btn(`${siteUrl}/dashboard/chapter/enrollments`, 'View Enrollments')}
+    `;
+    sends.push(resend.emails.send({
+      from: FROM,
+      to: chapterLeadEmail,
+      subject: `New enrollment — ${companyName} (${totalLicenses} licenses)`,
+      html: baseHtml('New Bulk Enrollment', body),
+    }));
+  }
+
+  await Promise.all(sends);
+}
+
 export async function sendRsvpConfirmationEmail({
   to,
   name,

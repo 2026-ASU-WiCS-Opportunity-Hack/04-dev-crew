@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/auth/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { sendJobApplicationAlertEmail } from '@/lib/email/send';
 
 interface Params { params: { id: string } }
 
@@ -28,6 +29,35 @@ export async function POST(request: Request, { params }: Params) {
       if (error.code === '23505') return NextResponse.json({ ok: false, error: 'You have already applied for this job.' }, { status: 409 });
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
+    // Alert chapter lead about the new application
+    const { data: listing } = await supabase
+      .from('job_listings')
+      .select('title, chapter_id')
+      .eq('id', params.id)
+      .maybeSingle();
+
+    if (listing) {
+      const { data: chapterLead } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('chapter_id', listing.chapter_id)
+        .eq('role', 'chapter_lead')
+        .maybeSingle();
+
+      if (chapterLead?.email) {
+        await sendJobApplicationAlertEmail({
+          to: chapterLead.email,
+          coachName: auth.coach.full_name,
+          coachEmail: auth.coach.contact_email ?? null,
+          coachCertLevel: auth.coach.certification_level,
+          jobTitle: listing.title,
+          coverNote: cover_note ?? null,
+          siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
+          jobId: params.id,
+        }).catch((err) => console.error('[apply] Failed to send application alert:', err));
+      }
+    }
+
     return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
