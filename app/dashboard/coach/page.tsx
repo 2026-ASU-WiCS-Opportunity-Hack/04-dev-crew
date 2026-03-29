@@ -1,21 +1,10 @@
 export const revalidate = 30;
 
 import Link from 'next/link';
-import { getCoach } from '@/lib/data/coach';
-import CertBadge from '@/components/coaches/CertBadge';
-
-const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
+import { requireCoach } from '@/lib/auth/server';
 
 export default async function CoachDashboardPage() {
-  const me = await getCoach(CRAIG_UUID);
-
-  if (!me) {
-    return (
-      <div className="coaches-empty">
-        <p>Coach profile not found.</p>
-      </div>
-    );
-  }
+  const { coach: me } = await requireCoach();
 
   const PALC_REQUIRED = 100;
   const CE_REQUIRED = 30;

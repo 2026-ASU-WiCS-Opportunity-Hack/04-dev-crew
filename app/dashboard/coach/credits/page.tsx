@@ -1,10 +1,11 @@
 export const revalidate = 30;
 
+import { requireCoach } from '@/lib/auth/server';
 import CeCreditsTracker from '@/components/coaches/CeCreditsTracker';
 
-const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
+export default async function CoachCreditsPage() {
+  const { coach } = await requireCoach();
 
-export default function CoachCreditsPage() {
   return (
     <>
       <div style={{ marginBottom: '1.75rem' }}>
@@ -14,7 +15,7 @@ export default function CoachCreditsPage() {
           Track continuing education credits earned toward your recertification cycle.
         </p>
       </div>
-      <CeCreditsTracker coachId={CRAIG_UUID} />
+      <CeCreditsTracker coachId={coach.id} />
     </>
   );
 }

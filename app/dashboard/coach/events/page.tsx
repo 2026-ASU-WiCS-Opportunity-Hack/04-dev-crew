@@ -1,14 +1,12 @@
 export const revalidate = 30;
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { getCoach } from '@/lib/data/coach';
+import { requireCoach } from '@/lib/auth/server';
 import EventsList from '@/components/coaches/EventsList';
 import type { EventRecord } from '@/lib/types';
 
-const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
-
 export default async function CoachEventsPage() {
-  const coach = await getCoach(CRAIG_UUID);
+  const { coach } = await requireCoach();
   const supabase = createSupabaseAdminClient();
 
   const [{ data: events }, { data: rsvps }] = await Promise.all([
@@ -23,7 +21,7 @@ export default async function CoachEventsPage() {
     supabase
       .from('event_rsvps')
       .select('event_id')
-      .eq('coach_id', CRAIG_UUID),
+      .eq('coach_id', coach.id),
   ]);
 
   const now = new Date();
@@ -46,7 +44,7 @@ export default async function CoachEventsPage() {
       <EventsList
         upcoming={upcoming}
         past={past}
-        coachId={CRAIG_UUID}
+        coachId={coach.id}
         initialRsvpIds={rsvpIds}
       />
     </>

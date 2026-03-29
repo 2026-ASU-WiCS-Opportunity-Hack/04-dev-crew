@@ -7,6 +7,16 @@ type UnauthorizedPageProps = {
 };
 
 const reasonCopy: Record<string, { title: string; body: string }> = {
+  "no-profile": {
+    title: "Profile setup incomplete",
+    body:
+      "Your account is signed in, but it does not have an application role yet. Please contact an administrator.",
+  },
+  "no-coach-profile": {
+    title: "Coach profile required",
+    body:
+      "Your account is signed in as a coach, but the linked coach profile could not be found.",
+  },
   "no-chapter": {
     title: "No chapter access found",
     body:

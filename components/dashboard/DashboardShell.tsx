@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { NavLink } from "@/components/dashboard/NavLink";
 import type { AppRole } from "@/lib/types";
 
@@ -145,6 +146,10 @@ export function DashboardShell({
             </>
           )}
         </nav>
+
+        <div style={{ marginTop: "auto", paddingTop: "1rem" }}>
+          <LogoutButton className="button-secondary" />
+        </div>
       </aside>
 
       <main className="dashboard-shell__main">{children}</main>

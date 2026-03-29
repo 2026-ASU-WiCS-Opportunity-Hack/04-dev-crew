@@ -1,17 +1,10 @@
 export const revalidate = 30;
 
-import Link from 'next/link';
-import { getCoach } from '@/lib/data/coach';
+import { requireCoach } from '@/lib/auth/server';
 import CoachProfileEditor from '@/components/coaches/CoachProfileEditor';
 
-const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
-
 export default async function CoachProfilePage() {
-  const me = await getCoach(CRAIG_UUID);
-
-  if (!me) {
-    return <div className="coaches-empty"><p>Coach profile not found.</p></div>;
-  }
+  const { coach: me } = await requireCoach();
 
   return (
     <>

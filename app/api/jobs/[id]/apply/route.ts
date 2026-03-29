@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthContext } from '@/lib/auth/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 interface Params { params: { id: string } }
@@ -6,8 +7,15 @@ interface Params { params: { id: string } }
 // POST /api/jobs/[id]/apply
 export async function POST(request: Request, { params }: Params) {
   try {
+    const auth = await getAuthContext();
+    if (!auth?.profile || auth.profile.role !== 'coach' || !auth.coach) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+    }
+
     const { coach_id, cover_note } = await request.json();
-    if (!coach_id) return NextResponse.json({ ok: false, error: 'coach_id is required.' }, { status: 400 });
+    if (!coach_id || coach_id !== auth.coach.id) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 403 });
+    }
 
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
@@ -29,8 +37,15 @@ export async function POST(request: Request, { params }: Params) {
 // DELETE /api/jobs/[id]/apply — withdraw application
 export async function DELETE(request: Request, { params }: Params) {
   try {
+    const auth = await getAuthContext();
+    if (!auth?.profile || auth.profile.role !== 'coach' || !auth.coach) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+    }
+
     const { coach_id } = await request.json();
-    if (!coach_id) return NextResponse.json({ ok: false, error: 'coach_id is required.' }, { status: 400 });
+    if (!coach_id || coach_id !== auth.coach.id) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 403 });
+    }
 
     const supabase = createSupabaseAdminClient();
 

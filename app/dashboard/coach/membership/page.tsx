@@ -1,10 +1,8 @@
 export const revalidate = 30;
 
-import { getCoach } from '@/lib/data/coach';
+import { requireCoach } from '@/lib/auth/server';
 import MembershipCard from '@/components/coaches/MembershipCard';
 import type { CoachRecord } from '@/lib/types';
-
-const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
 
 function getMembershipStatus(coach: CoachRecord): 'active' | 'needs_renewal' | 'not_active' {
   if (!coach.certification_expiry) return 'not_active';
@@ -17,11 +15,7 @@ function getMembershipStatus(coach: CoachRecord): 'active' | 'needs_renewal' | '
 }
 
 export default async function CoachMembershipPage() {
-  const coach = await getCoach(CRAIG_UUID);
-
-  if (!coach) {
-    return <div className="coaches-empty"><p>Coach profile not found.</p></div>;
-  }
+  const { coach } = await requireCoach();
 
   const status = getMembershipStatus(coach);
   const expiryDate = coach.certification_expiry

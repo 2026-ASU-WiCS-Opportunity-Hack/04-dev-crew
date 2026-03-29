@@ -1,9 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { ProfileRecord } from "@/lib/types";
+import { getDashboardPathForRole } from "@/lib/auth/session";
+
+const reasonCopy: Record<string, string> = {
+  auth_required: "Sign in to continue.",
+  session_required: "Sign in again to continue.",
+  session_expired: "Your session expired due to inactivity. Please sign in again.",
+};
+
+function getLoginErrorMessage(message: string) {
+  if (message.toLowerCase().includes("invalid login credentials")) {
+    return "Incorrect email or password.";
+  }
+
+  return message;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +28,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [sessionReason, setSessionReason] = useState<string | null>(null);
+  const [nextPath, setNextPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setSessionReason(params.get("reason"));
+    setNextPath(params.get("next"));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +52,7 @@ export default function LoginPage() {
         options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },
       });
       if (signUpError) {
-        setError(signUpError.message);
+        setError(getLoginErrorMessage(signUpError.message));
       } else {
         setMessage("Check your email for a confirmation link.");
       }
@@ -39,7 +62,7 @@ export default function LoginPage() {
         password,
       });
       if (signInError) {
-        setError(signInError.message);
+        setError(getLoginErrorMessage(signInError.message));
       } else {
         const {
           data: { user },
@@ -55,17 +78,29 @@ export default function LoginPage() {
             .maybeSingle();
 
           const profile = profileData as Pick<ProfileRecord, "role"> | null;
-          if (profile?.role === "super_admin") {
-            destination = "/dashboard/admin";
-          } else if (
-            profile?.role === "chapter_lead" ||
-            profile?.role === "content_creator"
-          ) {
-            destination = "/dashboard/chapter";
+          if (profile?.role) {
+            destination = getDashboardPathForRole(profile.role);
           }
         }
 
-        router.push(destination);
+        const sessionResponse = await fetch("/api/auth/session", {
+          method: "POST",
+        });
+        const sessionResult = await sessionResponse.json();
+
+        if (!sessionResponse.ok || !sessionResult.ok) {
+          await supabase.auth.signOut();
+          setError(sessionResult.error ?? "Unable to start your session.");
+          setLoading(false);
+          return;
+        }
+
+        const target =
+          nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+            ? nextPath
+            : destination;
+
+        router.push(target);
         router.refresh();
         return;
       }
@@ -96,6 +131,11 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="contact-form" style={{ padding: "2rem" }}>
+          {sessionReason && !error && !isSignUp && (
+            <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
+              {reasonCopy[sessionReason] ?? "Sign in to continue."}
+            </p>
+          )}
           <div className="contact-form__field-group">
             <label className="contact-form__label">Email</label>
             <input

@@ -1,18 +1,18 @@
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { requireCoach } from '@/lib/auth/server';
 import MyApplicationsList from '@/components/jobs/MyApplicationsList';
 import type { JobApplicationRecord } from '@/lib/types';
 
 export const revalidate = 30;
 
-const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
-
 export default async function MyApplicationsPage() {
+  const { coach } = await requireCoach();
   const supabase = createSupabaseAdminClient();
 
   const { data: applications } = await supabase
     .from('job_applications')
     .select('*, listing:job_listings(id, title, organization, engagement_type, location, is_remote)')
-    .eq('coach_id', CRAIG_UUID)
+    .eq('coach_id', coach.id)
     .order('created_at', { ascending: false })
     .returns<JobApplicationRecord[]>();
 
@@ -30,7 +30,7 @@ export default async function MyApplicationsPage() {
 
       <MyApplicationsList
         initialApplications={applications ?? []}
-        coachId={CRAIG_UUID}
+        coachId={coach.id}
       />
     </>
   );

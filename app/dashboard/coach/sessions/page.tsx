@@ -1,12 +1,10 @@
 export const revalidate = 30;
 
-import { getCoach } from '@/lib/data/coach';
+import { requireCoach } from '@/lib/auth/server';
 import SessionLogForm from '@/components/coaches/SessionLogForm';
 
-const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
-
 export default async function CoachSessionsPage() {
-  const me = await getCoach(CRAIG_UUID);
+  const { coach: me } = await requireCoach();
 
   return (
     <>
@@ -17,7 +15,7 @@ export default async function CoachSessionsPage() {
           Log your coaching hours to track progress toward the 100-hour PALC advancement requirement.
         </p>
       </div>
-      <SessionLogForm coachId={CRAIG_UUID} currentTotal={me?.total_session_hours ?? 0} />
+      <SessionLogForm coachId={me.id} currentTotal={me.total_session_hours ?? 0} />
     </>
   );
 }

@@ -1,13 +1,12 @@
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { getCoach } from '@/lib/data/coach';
+import { requireCoach } from '@/lib/auth/server';
 import JobListingsBoard from '@/components/jobs/JobListingsBoard';
 import type { JobListingRecord } from '@/lib/types';
 
 export const revalidate = 60;
 
-const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
-
 export default async function CoachJobsPage() {
+  const { coach } = await requireCoach();
   const supabase = createSupabaseAdminClient();
 
   const [{ data: listings }, { data: applications }] = await Promise.all([
@@ -20,7 +19,7 @@ export default async function CoachJobsPage() {
     supabase
       .from('job_applications')
       .select('listing_id')
-      .eq('coach_id', CRAIG_UUID),
+      .eq('coach_id', coach.id),
   ]);
 
   const appliedIds = (applications ?? []).map((a) => a.listing_id as string);
@@ -39,7 +38,7 @@ export default async function CoachJobsPage() {
 
       <JobListingsBoard
         listings={listings ?? []}
-        coachId={CRAIG_UUID}
+        coachId={coach.id}
         initialAppliedIds={appliedIds}
       />
     </>

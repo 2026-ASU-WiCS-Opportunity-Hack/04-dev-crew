@@ -1,10 +1,8 @@
 export const revalidate = 30;
 
 import Link from 'next/link';
-import { getCoach } from '@/lib/data/coach';
+import { requireCoach } from '@/lib/auth/server';
 import RecertificationActions from '@/components/coaches/RecertificationActions';
-
-const CRAIG_UUID = '56679f4e-9ef6-4c0a-a6e0-73069576c263';
 
 const CERT_REQUIREMENTS: Record<string, { sessionHours: number; ceCredits: number; cycleYears: number; description: string }> = {
   CALC: { sessionHours: 100, ceCredits: 30, cycleYears: 2, description: 'Entry-level certification. 32+ hours of training required initially.' },
@@ -14,11 +12,7 @@ const CERT_REQUIREMENTS: Record<string, { sessionHours: number; ceCredits: numbe
 };
 
 export default async function RecertificationPage() {
-  const coach = await getCoach(CRAIG_UUID);
-
-  if (!coach) {
-    return <div className="coaches-empty"><p>Coach profile not found.</p></div>;
-  }
+  const { coach } = await requireCoach();
 
   const req = CERT_REQUIREMENTS[coach.certification_level] ?? CERT_REQUIREMENTS.CALC;
   const sessionHours = coach.total_session_hours ?? 0;

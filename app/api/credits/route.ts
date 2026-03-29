@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { getAuthContext } from '@/lib/auth/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
+  const auth = await getAuthContext();
+
+  if (!auth?.profile || auth.profile.role !== 'coach' || !auth.coach) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const coachId = searchParams.get('coach_id');
 
-  if (!coachId) {
-    return NextResponse.json({ ok: false, error: 'coach_id is required.' }, { status: 400 });
+  if (!coachId || coachId !== auth.coach.id) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 403 });
   }
 
-  const supabase = createSupabaseAdminClient();
+  const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from('ce_credits')
     .select('*')
@@ -25,8 +32,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthContext();
+
+    if (!auth?.profile || auth.profile.role !== 'coach' || !auth.coach) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const supabase = createSupabaseAdminClient();
+    if (body.coach_id !== auth.coach.id) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 403 });
+    }
+
+    const supabase = createSupabaseServerClient();
 
     const { data, error } = await supabase
       .from('ce_credits')

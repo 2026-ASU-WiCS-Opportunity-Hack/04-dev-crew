@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthContext } from '@/lib/auth/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 interface RouteParams {
@@ -8,9 +9,14 @@ interface RouteParams {
 // POST /api/events/[id]/rsvp — create RSVP
 export async function POST(request: Request, { params }: RouteParams) {
   try {
+    const auth = await getAuthContext();
+    if (!auth?.profile || auth.profile.role !== 'coach' || !auth.coach) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+    }
+
     const { coach_id } = await request.json();
-    if (!coach_id) {
-      return NextResponse.json({ ok: false, error: 'coach_id is required' }, { status: 400 });
+    if (!coach_id || coach_id !== auth.coach.id) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 403 });
     }
 
     const supabase = createSupabaseAdminClient();
@@ -37,9 +43,14 @@ export async function POST(request: Request, { params }: RouteParams) {
 // DELETE /api/events/[id]/rsvp — cancel RSVP
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
+    const auth = await getAuthContext();
+    if (!auth?.profile || auth.profile.role !== 'coach' || !auth.coach) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+    }
+
     const { coach_id } = await request.json();
-    if (!coach_id) {
-      return NextResponse.json({ ok: false, error: 'coach_id is required' }, { status: 400 });
+    if (!coach_id || coach_id !== auth.coach.id) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 403 });
     }
 
     const supabase = createSupabaseAdminClient();
