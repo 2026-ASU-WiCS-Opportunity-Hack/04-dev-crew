@@ -61,8 +61,8 @@ A unified AI-native web platform where:
 
 ## Live Demo
 
-- **Deployed App:** _Coming soon_
-- **Demo Video:** _Coming soon_
+- **Deployed App:** https://04-dev-crew.vercel.app/
+- **Demo Video:** (https://youtu.be/RqB59b2Kl5Q)
 - **DevPost Project:** https://devpost.com/software/wial-platform 
 
 ---
