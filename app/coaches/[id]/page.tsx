@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import CoachProfile from '@/components/coaches/CoachProfile';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -22,20 +21,21 @@ export default async function CoachProfilePage({ params }: Props) {
   const coach = { ...data, chapter_name: (data as any).chapters?.name ?? null };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      {/* Nav */}
-      <nav style={{ padding: '0 32px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--card)', borderBottom: '1px solid rgba(28,43,51,0.08)', position: 'sticky', top: 0, zIndex: 50 }}>
-        <Link href="/" style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--accent)', textDecoration: 'none' }}>WIAL</Link>
-        <div style={{ display: 'flex', gap: 24, fontSize: '0.9rem' }}>
-          <Link href="/" style={{ textDecoration: 'none', color: 'var(--muted)' }}>Home</Link>
-          <Link href="/coaches" style={{ textDecoration: 'none', color: 'var(--text)', fontWeight: 600 }}>Coaches</Link>
-          <Link href="/dashboard/coach" style={{ textDecoration: 'none', color: 'var(--muted)' }}>My Dashboard</Link>
+    <>
+      <section className="page-header">
+        <div className="container">
+          <span className="eyebrow">Coach Profile</span>
+          <h1 className="section-title" style={{ marginTop: '0.75rem' }}>{coach.full_name}</h1>
         </div>
-      </nav>
+      </section>
 
-      <main style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
-        <CoachProfile coach={coach} />
-      </main>
-    </div>
+      <div className="page-divider" />
+
+      <section className="section">
+        <div className="container" style={{ maxWidth: 860 }}>
+          <CoachProfile coach={coach} />
+        </div>
+      </section>
+    </>
   );
 }

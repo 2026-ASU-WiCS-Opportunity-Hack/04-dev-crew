@@ -52,17 +52,9 @@ export default function CoachSearch({ onResults, onReset }: CoachSearchProps) {
 
   return (
     <div style={{ width: '100%' }}>
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 260, position: 'relative' }}>
-          <span
-            style={{
-              position: 'absolute',
-              left: 14,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              fontSize: '1.1rem',
-            }}
-          >
+          <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '1.1rem' }}>
             🔍
           </span>
           <input
@@ -70,93 +62,34 @@ export default function CoachSearch({ onResults, onReset }: CoachSearchProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder='Search in any language — try "Preciso de um coach para equipes de liderança em organizações governamentais"'
-            style={{
-              width: '100%',
-              padding: '12px 14px 12px 42px',
-              borderRadius: 12,
-              border: '1.5px solid rgba(28,43,51,0.15)',
-              background: 'var(--card)',
-              fontSize: '0.9rem',
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(28,43,51,0.15)')}
+            className="form-input"
+            style={{ paddingLeft: 42 }}
           />
         </div>
         <button
           type="submit"
           disabled={loading || !query.trim()}
-          style={{
-            padding: '12px 24px',
-            borderRadius: 12,
-            border: 'none',
-            background: loading ? '#94a3b8' : 'var(--accent)',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            whiteSpace: 'nowrap',
-          }}
+          className="button-primary"
+          style={{ opacity: loading || !query.trim() ? 0.6 : 1, cursor: loading || !query.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
         >
           {loading ? 'Searching…' : 'AI Search'}
         </button>
         {lastQuery && (
-          <button
-            type="button"
-            onClick={handleReset}
-            style={{
-              padding: '12px 18px',
-              borderRadius: 12,
-              border: '1.5px solid rgba(28,43,51,0.15)',
-              background: 'transparent',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-            }}
-          >
+          <button type="button" onClick={handleReset} className="button-secondary">
             Clear
           </button>
         )}
       </form>
 
-      {/* AI parsing info */}
       {parsedInfo && (
-        <div
-          style={{
-            marginTop: 10,
-            padding: '8px 14px',
-            background: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: 8,
-            fontSize: '0.8rem',
-            color: '#15803d',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <span>✨</span>
-          <span>
-            <strong>AI processed:</strong> "{lastQuery}" · {parsedInfo}
-          </span>
+        <div className="search-info" style={{ marginTop: '0.625rem', background: 'rgba(15,138,153,0.07)', border: '1px solid rgba(15,138,153,0.2)', borderRadius: 8, padding: '8px 14px', fontSize: '0.8rem', color: 'var(--accent)' }}>
+          ✨ <strong>AI processed:</strong> "{lastQuery}" · {parsedInfo}
         </div>
       )}
 
-      {/* Loading animation */}
       {loading && (
-        <div
-          style={{
-            marginTop: 10,
-            padding: '10px 14px',
-            background: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: 8,
-            fontSize: '0.82rem',
-            color: '#1d4ed8',
-          }}
-        >
-          🤖 Parsing query language → Generating embedding vector → Running cosine similarity search across 15 coaches…
+        <div className="search-loading">
+          🤖 Parsing query language → Generating embedding vector → Running cosine similarity search…
         </div>
       )}
     </div>
