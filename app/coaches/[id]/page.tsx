@@ -1,15 +1,15 @@
 import { notFound } from 'next/navigation';
 import CoachProfile from '@/components/coaches/CoachProfile';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // ISR: serve cached, rebuild in background every 60s
 
 interface Props {
   params: { id: string };
 }
 
 export default async function CoachProfilePage({ params }: Props) {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('coaches')
     .select('*, chapters(name, slug)')

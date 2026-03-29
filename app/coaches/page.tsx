@@ -4,11 +4,10 @@ import { useState, useEffect } from 'react';
 import type { CoachRecord, CertificationLevel } from '@/lib/types';
 import CoachSearch from '@/components/coaches/CoachSearch';
 import CoachDirectory from '@/components/coaches/CoachDirectory';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const CERT_LEVELS: CertificationLevel[] = ['CALC', 'PALC', 'SALC', 'MALC'];
 
-type CoachWithChapter = CoachRecord & { similarity?: number; chapter_name?: string; chapter_id?: string };
+type CoachWithChapter = CoachRecord & { similarity?: number; chapter_name?: string };
 
 export default function CoachesPage() {
   const [allCoaches, setAllCoaches] = useState<CoachWithChapter[]>([]);
@@ -19,21 +18,18 @@ export default function CoachesPage() {
   const [chapterFilter, setChapterFilter] = useState('');
 
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-    supabase
-      .from('coaches')
-      .select('*, chapters(name, slug)')
-      .eq('is_approved', true)
-      .order('full_name')
-      .then(({ data, error }) => {
-        if (error) console.error(error);
+    fetch('/api/coaches')
+      .then((r) => r.json())
+      .then(({ data, ok }) => {
+        if (!ok) return;
         const coaches = (data ?? []).map((c: any) => ({
           ...c,
           chapter_name: c.chapters?.name ?? null,
         }));
         setAllCoaches(coaches);
         setLoadingCoaches(false);
-      });
+      })
+      .catch(() => setLoadingCoaches(false));
   }, []);
 
   const countries = [...new Set(allCoaches.map((c) => c.location_country).filter((c): c is string => !!c))].sort();
