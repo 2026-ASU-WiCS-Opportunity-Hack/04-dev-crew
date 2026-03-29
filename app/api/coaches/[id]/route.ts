@@ -16,7 +16,26 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ ok: false, error: 'Failed to update coach.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const supabase = createSupabaseAdminClient();
+
+    const { error } = await supabase
+      .from('coaches')
+      .delete()
+      .eq('id', params.id);
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Failed to remove coach.' }, { status: 500 });
   }
 }

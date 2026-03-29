@@ -105,7 +105,7 @@ export function DashboardShell({
                 Chapter Home
               </NavLink>
               <NavLink href="/dashboard/chapter/coaches" icon="◉" collapsed={collapsed}>
-                Coaches
+                Coach Management
               </NavLink>
               <NavLink href="/dashboard/chapter/events" icon="◌" collapsed={collapsed}>
                 Events
