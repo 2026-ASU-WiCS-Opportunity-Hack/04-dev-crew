@@ -99,7 +99,7 @@ export function DashboardShell({
             </>
           ) : null}
 
-          {(role === "chapter_lead" || role === "content_creator") && (
+          {role === "chapter_lead" && (
             <>
               <NavLink href="/dashboard/chapter" icon="⌂" collapsed={collapsed}>
                 Chapter Home
@@ -139,6 +139,37 @@ export function DashboardShell({
               </NavLink>
               <NavLink href="/dashboard/chapter/edit" icon="✎" collapsed={collapsed}>
                 Edit Chapter
+              </NavLink>
+            </>
+          )}
+
+          {role === "content_creator" && (
+            <>
+              <NavLink href="/dashboard/chapter" icon="⌂" collapsed={collapsed}>
+                Content Home
+              </NavLink>
+              <NavLink href="/dashboard/chapter/edit" icon="✎" collapsed={collapsed}>
+                Edit Chapter
+              </NavLink>
+              <NavLink href="/dashboard/chapter/events" icon="◌" collapsed={collapsed}>
+                Events
+              </NavLink>
+              <NavLink href="/dashboard/chapter/clients" icon="□" collapsed={collapsed}>
+                Clients
+              </NavLink>
+              <NavLink
+                href="/dashboard/chapter/testimonials"
+                icon="❝"
+                collapsed={collapsed}
+              >
+                Testimonials
+              </NavLink>
+              <NavLink
+                href="/dashboard/chapter/campaigns"
+                icon="✉"
+                collapsed={collapsed}
+              >
+                Campaigns
               </NavLink>
             </>
           )}

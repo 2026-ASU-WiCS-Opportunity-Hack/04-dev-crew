@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { ChapterPreview } from "@/components/chapter/ChapterPreview";
 import { useChapterDashboardContext } from "@/components/providers/ChapterDashboardProvider";
@@ -49,7 +50,20 @@ function moveSection(
   return nextSections;
 }
 
+const EMPTY_CHAPTER_CONTENT: GeneratedChapterContent = {
+  hero_headline: "",
+  hero_subheadline: "",
+  about_section: "",
+  why_action_learning: ["", "", ""],
+  coaches_intro: "",
+  event_highlight: "",
+  testimonial_formatted: "",
+  cta_text: "",
+  meta_description: "",
+};
+
 export default function EditChapterPage() {
+  const router = useRouter();
   const [chapter, setChapter] = useState<ChapterRecord | null>(null);
   const [name, setName] = useState("");
   const [contactName, setContactName] = useState("");
@@ -68,7 +82,8 @@ export default function EditChapterPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const { chapterId } = useChapterDashboardContext();
+  const { chapterId, orgRole } = useChapterDashboardContext();
+  const isContentCreator = orgRole === "content_creator";
 
   useEffect(() => {
     async function load() {
@@ -89,6 +104,7 @@ export default function EditChapterPage() {
         setContactEmail(chapterData.contact_email ?? "");
         setExternalWebsite(chapterData.external_website ?? "");
         setLanguage(chapterData.language);
+        // Use normalizeChapterContent to get localNavText and sections as well
         const normalizedContent = normalizeChapterContent(chapterData);
         setPreview(normalizedContent);
         setLocalNavText(navItemsToText(normalizedContent.local_nav_json));
@@ -125,6 +141,7 @@ export default function EditChapterPage() {
         throw new Error(data.error ?? "Generation failed");
       }
       const data = await res.json();
+      // Merge generated content with current localNavText and sections
       const nextContent = {
         ...getDefaultChapterContent({
           ...chapter,
@@ -149,7 +166,7 @@ export default function EditChapterPage() {
     setError(null);
     setSuccess(false);
     try {
-      const supabase = createSupabaseBrowserClient();
+      // Build a complete content object that includes local nav and page builder sections
       const nextContent: GeneratedChapterContent = {
         ...(preview ?? getDefaultChapterContent(chapter)),
         hero_headline: preview?.hero_headline ?? name,
@@ -167,20 +184,46 @@ export default function EditChapterPage() {
         sections,
       };
 
-      const { error: updateError } = await supabase
-        .from("chapters")
-        .update({
+      const response = await fetch("/api/chapters/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chapterId: chapter.id,
+          name,
+          contactName: contactName || null,
+          contactEmail: contactEmail || null,
+          externalWebsite: externalWebsite || null,
+          language,
+          content: nextContent,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? "Save failed");
+      }
+
+      setPreview(nextContent);
+
+      if (!isContentCreator) {
+        setChapter({
+          ...chapter,
           name,
           contact_name: contactName || null,
           contact_email: contactEmail || null,
           external_website: externalWebsite || null,
           language,
           content_json: nextContent,
-        })
-        .eq("id", chapter.id);
+        });
+      } else {
+        setChapter({
+          ...chapter,
+          content_json: nextContent,
+        });
+      }
 
-      if (updateError) throw updateError;
-      setPreview(nextContent);
+      router.refresh();
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -192,62 +235,77 @@ export default function EditChapterPage() {
   if (loading) return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading...</p>;
   if (!chapter) return <p style={{ color: "#dc2626", fontSize: "0.9rem" }}>No chapter assigned to your profile.</p>;
 
+  const content = preview ?? EMPTY_CHAPTER_CONTENT;
+
   return (
     <div>
-      <h1 className="section-title" style={{ marginBottom: "1.5rem" }}>Edit {chapter.name}</h1>
+      <div style={{ display: "grid", gap: "0.4rem", marginBottom: "1.5rem" }}>
+        <h1 className="section-title">Edit {chapter.name}</h1>
+        <p style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
+          {isContentCreator
+            ? "Update the approved content zones for your chapter page without changing structure or global branding."
+            : "Manage chapter details and update the public-facing content for your chapter page."}
+        </p>
+      </div>
 
       <div className="contact-form" style={{ padding: "1.5rem" }}>
-        <div className="card-grid">
-          <div className="contact-form__field-group">
-            <label className="contact-form__label">Chapter Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="contact-form__field"
-            />
-          </div>
-          <div className="contact-form__field-group">
-            <label className="contact-form__label">Language</label>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="contact-form__field"
-            >
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="pt">Portuguese</option>
-              <option value="fr">French</option>
-            </select>
-          </div>
-          <div className="contact-form__field-group">
-            <label className="contact-form__label">Contact Name</label>
-            <input
-              type="text"
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              className="contact-form__field"
-            />
-          </div>
-          <div className="contact-form__field-group">
-            <label className="contact-form__label">Contact Email</label>
-            <input
-              type="email"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              className="contact-form__field"
-            />
-          </div>
-          <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
-            <label className="contact-form__label">External Website</label>
-            <input
-              type="url"
-              value={externalWebsite}
-              onChange={(e) => setExternalWebsite(e.target.value)}
-              className="contact-form__field"
-            />
-          </div>
-        </div>
+        {!isContentCreator && (
+          <>
+            <div className="card-grid">
+              <div className="contact-form__field-group">
+                <label className="contact-form__label">Chapter Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="contact-form__field"
+                />
+              </div>
+              <div className="contact-form__field-group">
+                <label className="contact-form__label">Language</label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="contact-form__field"
+                >
+                  <option value="en">English</option>
+                  <option value="es">Spanish</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="fr">French</option>
+                </select>
+              </div>
+              <div className="contact-form__field-group">
+                <label className="contact-form__label">Contact Name</label>
+                <input
+                  type="text"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  className="contact-form__field"
+                />
+              </div>
+              <div className="contact-form__field-group">
+                <label className="contact-form__label">Contact Email</label>
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  className="contact-form__field"
+                />
+              </div>
+              <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
+                <label className="contact-form__label">External Website</label>
+                <input
+                  type="url"
+                  value={externalWebsite}
+                  onChange={(e) => setExternalWebsite(e.target.value)}
+                  className="contact-form__field"
+                />
+              </div>
+            </div>
+
+            <div className="page-divider" style={{ margin: "1.5rem 0" }} />
+          </>
+        )}
 
         <div className="page-divider" style={{ margin: "1.5rem 0" }} />
         <p className="eyebrow" style={{ marginBottom: "1rem" }}>Local Website Content</p>
@@ -293,104 +351,108 @@ export default function EditChapterPage() {
           </div>
         </div>
 
-        <div className="page-divider" style={{ margin: "1.5rem 0" }} />
-        <p className="eyebrow" style={{ marginBottom: "1rem" }}>Page Builder</p>
-        <div style={{ display: "grid", gap: "1rem" }}>
-          {sections.map((section, index) => (
-            <div key={section.id} className="feature-card" style={{ display: "grid", gap: "0.85rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", alignItems: "center" }}>
-                <strong>{section.title}</strong>
-                <div className="stack-actions">
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={() => setSections((current) => moveSection(current, index, -1))}
-                  >
-                    Move Up
-                  </button>
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={() => setSections((current) => moveSection(current, index, 1))}
-                  >
-                    Move Down
-                  </button>
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={() =>
-                      setSections((current) => current.filter((item) => item.id !== section.id))
-                    }
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
+        {!isContentCreator && (
+          <>
+            <div className="page-divider" style={{ margin: "1.5rem 0" }} />
+            <p className="eyebrow" style={{ marginBottom: "1rem" }}>Page Builder</p>
+            <div style={{ display: "grid", gap: "1rem" }}>
+              {sections.map((section, index) => (
+                <div key={section.id} className="feature-card" style={{ display: "grid", gap: "0.85rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", alignItems: "center" }}>
+                    <strong>{section.title}</strong>
+                    <div className="stack-actions">
+                      <button
+                        type="button"
+                        className="button-secondary"
+                        onClick={() => setSections((current) => moveSection(current, index, -1))}
+                      >
+                        Move Up
+                      </button>
+                      <button
+                        type="button"
+                        className="button-secondary"
+                        onClick={() => setSections((current) => moveSection(current, index, 1))}
+                      >
+                        Move Down
+                      </button>
+                      <button
+                        type="button"
+                        className="button-secondary"
+                        onClick={() =>
+                          setSections((current) => current.filter((item) => item.id !== section.id))
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="card-grid">
-                <div className="contact-form__field-group">
-                  <label className="contact-form__label">Section Title</label>
-                  <input
-                    type="text"
-                    value={section.title}
-                    onChange={(e) =>
-                      setSections((current) =>
-                        current.map((item) =>
-                          item.id === section.id ? { ...item, title: e.target.value } : item,
-                        ),
-                      )
-                    }
-                    className="contact-form__field"
-                  />
+                  <div className="card-grid">
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Section Title</label>
+                      <input
+                        type="text"
+                        value={section.title}
+                        onChange={(e) =>
+                          setSections((current) =>
+                            current.map((item) =>
+                              item.id === section.id ? { ...item, title: e.target.value } : item,
+                            ),
+                          )
+                        }
+                        className="contact-form__field"
+                      />
+                    </div>
+                    <div className="contact-form__field-group">
+                      <label className="contact-form__label">Section Type</label>
+                      <input
+                        type="text"
+                        value={section.type}
+                        className="contact-form__field"
+                        disabled
+                      />
+                    </div>
+                    <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
+                      <label className="contact-form__label">Body</label>
+                      <textarea
+                        value={section.body ?? ""}
+                        onChange={(e) =>
+                          setSections((current) =>
+                            current.map((item) =>
+                              item.id === section.id ? { ...item, body: e.target.value } : item,
+                            ),
+                          )
+                        }
+                        className="contact-form__field"
+                        rows={4}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="contact-form__field-group">
-                  <label className="contact-form__label">Section Type</label>
-                  <input
-                    type="text"
-                    value={section.type}
-                    className="contact-form__field"
-                    disabled
-                  />
-                </div>
-                <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
-                  <label className="contact-form__label">Body</label>
-                  <textarea
-                    value={section.body ?? ""}
-                    onChange={(e) =>
-                      setSections((current) =>
-                        current.map((item) =>
-                          item.id === section.id ? { ...item, body: e.target.value } : item,
-                        ),
-                      )
-                    }
-                    className="contact-form__field"
-                    rows={4}
-                  />
-                </div>
+              ))}
+
+              <div className="stack-actions">
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() =>
+                    setSections((current) => [
+                      ...current,
+                      {
+                        id: `custom-${Date.now()}`,
+                        type: "custom",
+                        title: "New Section",
+                        body: "",
+                      },
+                    ])
+                  }
+                >
+                  Add Custom Section
+                </button>
               </div>
             </div>
-          ))}
-
-          <div className="stack-actions">
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() =>
-                setSections((current) => [
-                  ...current,
-                  {
-                    id: `custom-${Date.now()}`,
-                    type: "custom",
-                    title: "New Section",
-                    body: "",
-                  },
-                ])
-              }
-            >
-              Add Custom Section
-            </button>
-          </div>
-        </div>
+          </>
+        )}
 
         <div className="page-divider" style={{ margin: "1.5rem 0" }} />
         <p className="eyebrow" style={{ marginBottom: "1rem" }}>Regenerate AI Content (optional)</p>
@@ -429,6 +491,101 @@ export default function EditChapterPage() {
               type="text"
               value={testimonial}
               onChange={(e) => setTestimonial(e.target.value)}
+              className="contact-form__field"
+            />
+          </div>
+        </div>
+
+        <div className="page-divider" style={{ margin: "1.5rem 0" }} />
+        <p className="eyebrow" style={{ marginBottom: "1rem" }}>Editable Content Zones</p>
+        <div className="contact-form__field-group">
+          <label className="contact-form__label">Hero Headline</label>
+          <input
+            type="text"
+            value={content.hero_headline}
+            onChange={(e) => setPreview({ ...content, hero_headline: e.target.value })}
+            className="contact-form__field"
+          />
+        </div>
+        <div className="contact-form__field-group">
+          <label className="contact-form__label">Hero Subheadline</label>
+          <textarea
+            value={content.hero_subheadline}
+            onChange={(e) => setPreview({ ...content, hero_subheadline: e.target.value })}
+            rows={3}
+            className="contact-form__field"
+          />
+        </div>
+        <div className="contact-form__field-group">
+          <label className="contact-form__label">About Section</label>
+          <textarea
+            value={content.about_section}
+            onChange={(e) => setPreview({ ...content, about_section: e.target.value })}
+            rows={5}
+            className="contact-form__field"
+          />
+        </div>
+        <div className="contact-form__field-group">
+          <label className="contact-form__label">Why Action Learning</label>
+          <textarea
+            value={content.why_action_learning.filter(Boolean).join("\n")}
+            onChange={(e) =>
+              setPreview({
+                ...content,
+                why_action_learning: e.target.value
+                  .split("\n")
+                  .map((item) => item.trim())
+                  .filter(Boolean),
+              })
+            }
+            rows={4}
+            placeholder="One point per line"
+            className="contact-form__field"
+          />
+        </div>
+        <div className="card-grid">
+          <div className="contact-form__field-group">
+            <label className="contact-form__label">Coaches Intro</label>
+            <textarea
+              value={content.coaches_intro}
+              onChange={(e) => setPreview({ ...content, coaches_intro: e.target.value })}
+              rows={4}
+              className="contact-form__field"
+            />
+          </div>
+          <div className="contact-form__field-group">
+            <label className="contact-form__label">Event Highlight</label>
+            <textarea
+              value={content.event_highlight}
+              onChange={(e) => setPreview({ ...content, event_highlight: e.target.value })}
+              rows={4}
+              className="contact-form__field"
+            />
+          </div>
+          <div className="contact-form__field-group">
+            <label className="contact-form__label">Testimonial Highlight</label>
+            <textarea
+              value={content.testimonial_formatted}
+              onChange={(e) => setPreview({ ...content, testimonial_formatted: e.target.value })}
+              rows={4}
+              className="contact-form__field"
+            />
+          </div>
+          <div className="contact-form__field-group">
+            <label className="contact-form__label">Call to Action</label>
+            <input
+              type="text"
+              value={content.cta_text}
+              onChange={(e) => setPreview({ ...content, cta_text: e.target.value })}
+              className="contact-form__field"
+            />
+          </div>
+          <div className="contact-form__field-group" style={{ gridColumn: "1 / -1" }}>
+            <label className="contact-form__label">Meta Description</label>
+            <textarea
+              value={content.meta_description}
+              onChange={(e) => setPreview({ ...content, meta_description: e.target.value })}
+              rows={3}
               className="contact-form__field"
             />
           </div>
