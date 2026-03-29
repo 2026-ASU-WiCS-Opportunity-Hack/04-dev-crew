@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfileRecord } from "@/lib/types";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
@@ -31,7 +32,8 @@ export default async function DashboardLayout({
   let chapterHomeHref = "/dashboard/chapter";
 
   if (p?.chapter_id) {
-    const { data: chapterData } = await supabase
+    const adminSupabase = createSupabaseAdminClient();
+    const { data: chapterData } = await adminSupabase
       .from("chapters")
       .select("slug")
       .eq("id", p.chapter_id)
