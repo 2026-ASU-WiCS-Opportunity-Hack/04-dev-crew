@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getOptionalResendKey } from "@/lib/env";
+import { Resend } from "resend";
 import type { GeneratedChapterContent } from "@/lib/types";
 
 type ChapterUpdateBody = {
@@ -105,6 +107,43 @@ export async function POST(request: Request) {
     revalidatePath(`/${chapter.slug}/coaches`);
     revalidatePath(`/${chapter.slug}/events`);
     revalidatePath("/events");
+
+    // Notify admin when chapter lead or content creator publishes changes
+    try {
+      const resendKey = getOptionalResendKey();
+      if (resendKey) {
+        const { data: branding } = await admin
+          .from("global_branding_settings")
+          .select("executive_director_email, site_name")
+          .eq("id", "global")
+          .maybeSingle();
+
+        const adminEmail = branding?.executive_director_email;
+        if (adminEmail) {
+          const resend = new Resend(resendKey);
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+          const updatedBy = profile.role === "content_creator" ? "Content Creator" : "Chapter Lead";
+          await resend.emails.send({
+            from: "WIAL Platform <onboarding@resend.dev>",
+            to: adminEmail,
+            subject: `Chapter page updated — ${body.name ?? chapter.slug}`,
+            html: `
+              <div style="font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.6;max-width:560px;margin:0 auto;padding:32px;">
+                <h2 style="margin-bottom:0.5rem;">Chapter Page Updated</h2>
+                <p>The <strong>${body.name ?? chapter.slug}</strong> chapter page was just updated by a <strong>${updatedBy}</strong>.</p>
+                <a href="${siteUrl}/${chapter.slug}"
+                   style="display:inline-block;margin-top:16px;padding:12px 24px;background:#1a56db;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">
+                  View Chapter Page
+                </a>
+                <p style="margin-top:24px;color:#6b7280;font-size:0.85rem;">${branding?.site_name ?? "WIAL Platform"}</p>
+              </div>
+            `,
+          });
+        }
+      }
+    } catch {
+      // Non-critical — don't fail the update if email fails
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
