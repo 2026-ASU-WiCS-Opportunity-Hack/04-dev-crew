@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
 import { ChapterPreview } from "@/components/chapter/ChapterPreview";
+import { useChapterDashboardContext } from "@/components/providers/ChapterDashboardProvider";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { ChapterRecord, GeneratedChapterContent, ChapterGenerationInput } from "@/lib/types";
 
 export default function EditChapterPage() {
@@ -22,22 +24,13 @@ export default function EditChapterPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const { chapterId } = useChapterDashboardContext();
 
   useEffect(() => {
     async function load() {
-      const supabase = createSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("chapter_id")
-        .eq("id", user.id)
-        .single();
-
-      const chapterId = (profile as { chapter_id: string | null } | null)?.chapter_id;
       if (!chapterId) { setLoading(false); return; }
 
+      const supabase = createSupabaseBrowserClient();
       const { data: ch } = await supabase
         .from("chapters")
         .select("*")
@@ -59,7 +52,7 @@ export default function EditChapterPage() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [chapterId]);
 
   async function handleRegenerate() {
     if (!chapter) return;

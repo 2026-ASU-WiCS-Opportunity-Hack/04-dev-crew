@@ -1,53 +1,49 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { CampaignList } from "@/components/campaigns/CampaignList";
-import type { CampaignRecord } from "@/lib/types";
 import Link from "next/link";
+
+import { CampaignList } from "@/components/campaigns/CampaignList";
+import { useChapterDashboardContext } from "@/components/providers/ChapterDashboardProvider";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { CampaignRecord } from "@/lib/types";
 
 export default function ChapterCampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
-  const [chapterId, setChapterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { chapterId } = useChapterDashboardContext();
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    const supabase = createSupabaseBrowserClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("chapter_id")
-      .eq("id", user.id)
-      .single();
-
-    const cid = (profile as { chapter_id: string | null } | null)?.chapter_id ?? null;
-    setChapterId(cid);
-
-    if (cid) {
-      const { data } = await supabase
-        .from("campaigns")
-        .select("*")
-        .eq("chapter_id", cid)
-        .order("created_at", { ascending: false });
-      setCampaigns((data as CampaignRecord[]) ?? []);
+    if (!chapterId) {
+      setLoading(false);
+      return;
     }
+
+    loadData(chapterId);
+  }, [chapterId]);
+
+  async function loadData(currentChapterId: string) {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("chapter_id", currentChapterId)
+      .order("created_at", { ascending: false });
+    setCampaigns((data as CampaignRecord[]) ?? []);
     setLoading(false);
   }
 
   async function handleSend(campaignId: string) {
-    const supabase = createSupabaseBrowserClient();
+    if (!chapterId) {
+      return;
+    }
+
     const res = await fetch("/api/campaigns/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ campaignId }),
     });
-    if (res.ok) await loadData();
+    if (res.ok) await loadData(chapterId);
   }
 
   if (loading) return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading...</p>;

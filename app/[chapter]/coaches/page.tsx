@@ -1,6 +1,12 @@
 import { notFound } from "next/navigation";
+import { ChapterAccessDebug } from "@/components/debug/ChapterAccessDebug";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { CoachRecord } from "@/lib/types";
+import {
+  getChapterAccessDebugInfo,
+  getOptionalChapterAccessContext,
+  requireChapterAccess,
+} from "@/lib/chapter-access";
 
 export const revalidate = 3600;
 
@@ -10,6 +16,19 @@ interface PageProps {
 
 export default async function ChapterCoachesPublicPage({ params }: PageProps) {
   const { chapter: slug } = await params;
+
+  const accessContext = await getOptionalChapterAccessContext();
+  let chapterAccess:
+    | Awaited<ReturnType<typeof requireChapterAccess>>
+    | null = null;
+
+  if (accessContext?.profile?.role === "chapter_lead") {
+    chapterAccess = await requireChapterAccess(slug, {
+      allowedRoles: ["chapter_lead"],
+      onMismatch: "redirect",
+    });
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const { data: chapterData } = await supabase
@@ -34,6 +53,9 @@ export default async function ChapterCoachesPublicPage({ params }: PageProps) {
 
   return (
     <>
+      <ChapterAccessDebug
+        info={getChapterAccessDebugInfo(chapterAccess ?? accessContext)}
+      />
       <section className="page-header">
         <div className="container">
           <span className="eyebrow">Chapter</span>

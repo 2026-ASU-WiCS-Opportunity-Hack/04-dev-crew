@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
 import { BulkEnrollForm } from "@/components/enrollments/BulkEnrollForm";
+import { useChapterDashboardContext } from "@/components/providers/ChapterDashboardProvider";
 import { EnrollmentTracker } from "@/components/enrollments/EnrollmentTracker";
-import type { ProfileRecord } from "@/lib/types";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface Enrollment {
   id: string;
@@ -18,9 +19,9 @@ interface Enrollment {
 }
 
 export default function EnrollmentsPage() {
-  const [chapterId, setChapterId] = useState<string | null>(null);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
+  const { chapterId } = useChapterDashboardContext();
 
   const loadEnrollments = useCallback(async (cId: string) => {
     const supabase = createSupabaseBrowserClient();
@@ -34,23 +35,16 @@ export default function EnrollmentsPage() {
 
   useEffect(() => {
     async function init() {
-      const supabase = createSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!chapterId) {
+        setLoading(false);
+        return;
+      }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("chapter_id")
-        .eq("id", user.id)
-        .single();
-
-      const cId = (profile as Pick<ProfileRecord, "chapter_id"> | null)?.chapter_id ?? null;
-      setChapterId(cId);
-      if (cId) await loadEnrollments(cId);
+      await loadEnrollments(chapterId);
       setLoading(false);
     }
     init();
-  }, [loadEnrollments]);
+  }, [chapterId, loadEnrollments]);
 
   if (loading) return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading...</p>;
   if (!chapterId) return <p style={{ color: "#dc2626", fontSize: "0.9rem" }}>No chapter assigned to your profile.</p>;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { ProfileRecord } from "@/lib/types";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,7 +41,31 @@ export default function LoginPage() {
       if (signInError) {
         setError(signInError.message);
       } else {
-        router.push("/dashboard/admin");
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        let destination = "/dashboard/coach";
+
+        if (user) {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          const profile = profileData as Pick<ProfileRecord, "role"> | null;
+          if (profile?.role === "super_admin") {
+            destination = "/dashboard/admin";
+          } else if (
+            profile?.role === "chapter_lead" ||
+            profile?.role === "content_creator"
+          ) {
+            destination = "/dashboard/chapter";
+          }
+        }
+
+        router.push(destination);
         router.refresh();
         return;
       }

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { ProfileRecord } from "@/lib/types";
+import type { ChapterRecord, ProfileRecord } from "@/lib/types";
 import { NavLink } from "@/components/dashboard/NavLink";
 
 export default async function DashboardLayout({
@@ -27,6 +27,20 @@ export default async function DashboardLayout({
 
   const p = profile as ProfileRecord | null;
   const role = p?.role ?? "coach";
+  let chapterHomeHref = "/dashboard/chapter";
+
+  if (p?.chapter_id) {
+    const { data: chapterData } = await supabase
+      .from("chapters")
+      .select("slug")
+      .eq("id", p.chapter_id)
+      .maybeSingle();
+
+    const chapter = chapterData as Pick<ChapterRecord, "slug"> | null;
+    if (chapter?.slug) {
+      chapterHomeHref = `/${chapter.slug}`;
+    }
+  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -57,7 +71,7 @@ export default async function DashboardLayout({
           )}
           {(role === "chapter_lead" || role === "content_creator") && (
             <>
-              <NavLink href="/dashboard/chapter">Chapter Home</NavLink>
+              <NavLink href={chapterHomeHref}>Chapter Home</NavLink>
               <NavLink href="/dashboard/chapter/coaches">Coaches</NavLink>
               <NavLink href="/dashboard/chapter/events">Events</NavLink>
               <NavLink href="/dashboard/chapter/payments">Payments</NavLink>

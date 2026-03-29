@@ -1,8 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
 import { ClientGrid } from "@/components/clients/ClientGrid";
+import { useChapterDashboardContext } from "@/components/providers/ChapterDashboardProvider";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface Client {
   id: string;
@@ -14,40 +16,31 @@ interface Client {
 
 export default function ChapterClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [chapterId, setChapterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const { chapterId } = useChapterDashboardContext();
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    const supabase = createSupabaseBrowserClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("chapter_id")
-      .eq("id", user.id)
-      .single();
-
-    const cid = (profile as { chapter_id: string | null } | null)?.chapter_id ?? null;
-    setChapterId(cid);
-
-    if (cid) {
-      const { data } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("chapter_id", cid)
-        .order("name");
-      setClients((data as Client[]) ?? []);
+    if (!chapterId) {
+      setLoading(false);
+      return;
     }
+
+    loadData(chapterId);
+  }, [chapterId]);
+
+  async function loadData(currentChapterId: string) {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase
+      .from("clients")
+      .select("*")
+      .eq("chapter_id", currentChapterId)
+      .order("name");
+    setClients((data as Client[]) ?? []);
     setLoading(false);
   }
 
@@ -67,7 +60,7 @@ export default function ChapterClientsPage() {
     setDescription("");
     setShowForm(false);
     setSaving(false);
-    await loadData();
+    await loadData(chapterId);
   }
 
   if (loading) return <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Loading...</p>;

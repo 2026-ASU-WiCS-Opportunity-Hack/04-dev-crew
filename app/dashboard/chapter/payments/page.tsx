@@ -1,42 +1,35 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
 import { PaymentTracker } from "@/components/payments/PaymentTracker";
 import { PaymentForm } from "@/components/payments/PaymentForm";
+import { useChapterDashboardContext } from "@/components/providers/ChapterDashboardProvider";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { PaymentRecord } from "@/lib/types";
 
 export default function ChapterPaymentsPage() {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [chapterId, setChapterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { chapterId } = useChapterDashboardContext();
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    const supabase = createSupabaseBrowserClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("chapter_id")
-      .eq("id", user.id)
-      .single();
-
-    const cid = (profile as { chapter_id: string | null } | null)?.chapter_id ?? null;
-    setChapterId(cid);
-
-    if (cid) {
-      const { data } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("chapter_id", cid)
-        .order("created_at", { ascending: false });
-      setPayments((data as PaymentRecord[]) ?? []);
+    if (!chapterId) {
+      setLoading(false);
+      return;
     }
+
+    loadData(chapterId);
+  }, [chapterId]);
+
+  async function loadData(currentChapterId: string) {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("chapter_id", currentChapterId)
+      .order("created_at", { ascending: false });
+    setPayments((data as PaymentRecord[]) ?? []);
     setLoading(false);
   }
 
